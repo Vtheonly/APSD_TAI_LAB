@@ -1,0 +1,20 @@
+==============================================
+     COHORT ACADEMIC STATISTICAL REPORT       
+==============================================
+Mean           : 9.69
+Median         : 8.6
+Stdev          : 3.41
+Min_average    : 5.64
+Max_average    : 15.3
+Mean_age       : 23.1
+----------------------------------------------
+STU_001 | Age: 20 | Avg: 15.3
+STU_002 | Age: 22 | Avg: 8.97
+STU_003 | Age: 24 | Avg: 14.57
+STU_004 | Age: 23 | Avg: 8.23
+STU_005 | Age: 26 | Avg: 7.83
+STU_006 | Age: 23 | Avg: 9.68
+STU_007 | Age: 26 | Avg: 5.64
+STU_008 | Age: 23 | Avg: 12.95
+STU_009 | Age: 22 | Avg: 7.0
+STU_010 | Age: 22 | Avg: 6.7
