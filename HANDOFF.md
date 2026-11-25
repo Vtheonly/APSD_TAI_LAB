@@ -119,29 +119,57 @@ block extracted & executed, outputs equal `TAI/utils/metrics.py` exactly.
   article + PDF-derived details state, and record any ambiguity as an issue
   comment rather than guessing.
 
+## Session 3 — issue #2 (APDS/00_Introduction_Exercises, TP1)
+
+**Completed work** (lab commit `1805a03`; issue #2 commented, left OPEN —
+see blocker):
+1. Created `APDS/00_Introduction_Exercises/` per the issue spec: `README.md`
+   (with explicit source-status note) + `notebooks/01_introduction_exercises.ipynb`
+   (13 cells, output-free, nbformat 4.5, standard Step-0 bootstrap).
+   Contents: 8-step workflow reference cell; **Ex 1** five-slot answer schema
+   (domain / data types / key steps) + completion guide; **Ex 2** verified
+   heart-disease role mapping (Data Scientist, ML Engineer, Data Engineer,
+   Domain Expert, BI Analyst — each tied to workflow steps) + 3
+   critical-thinking Q&As inside verified scope.
+2. `APDS/README.md`: index row 00 (nine projects).
+
+**Validation:** `pytest -q` 176 passed · `execute_notebooks.py` **23/23**,
+0 cell errors · `verify_repo.py` PASS · `pip check` clean.
+
+**Key verified finding (affects all APDS-side issues):**
+- `TP1_Chapter_Introduction.pdf` is in **neither repo**, none of the owner's
+  92 GitHub repos (checked via REST: only `UMBB-A2I` and `UMBB-Master-1`
+  match APDS/TAI keywords; UMBB-A2I holds no APDS PDFs), and the audit
+  article transcribes only the exercise *structure*, not the five scenario
+  domains or Ex 2's exact questions. The five Ex-1 domains are committed as
+  `TO_CONFIRM_FROM_TP1_PDF` placeholders (issue #2 comment documents this).
+  **Same risk applies to every APDS issue that needs exact PDF text** —
+  where the article gives exact commands/values, implement them; where it
+  gives only structure, scaffold + placeholder + issue comment.
+
 ## Next session
 
-**Execute issue #2: "[stage-1][track-apds] Create APDS/00_Introduction_Exercises (TP1 Ex 1-2)".**
+**Execute issue #4: "[stage-1][track-vault] Data Science 01.1–01.4: Chapter 1–2 content completion"** (next in numeric order per HANDOFF ordering: #4 → #3).
 
 Continuation prompt (paste as-is):
 
 > You are continuing the APSD_TAI_LAB / Obsidian-vault curriculum work. Read
 > `AGENT.md` and `HANDOFF.md` in the APSD_TAI_LAB clone, then execute GitHub
-> issue #2 (create `APDS/00_Introduction_Exercises` implementing the
-> `TP1_Chapter_Introduction` Exercises 1–2: README + notebook with the standard
-> Step-0 bootstrap cell; update `APDS/README.md`). Working spec: the Phase-1
-> audit article (the APDS PDFs are not in the repo) — implement only what it
-> specifies, and note the source in the README. Validate with
-> `python -m pytest -q` (100% pass), `MPLBACKEND=Agg python
-> scripts/execute_notebooks.py` (23/23 notebooks — extend the test/scripts
-> expectations if they enumerate APDS folders), `python scripts/verify_repo.py`
-> (PASS). Then close issue #2 via the GitHub REST API with a summary of changed
-> files and test results, update `HANDOFF.md` (session record + next issue),
-> commit and push, and stop. If #2 is already done, take the next open issue in
-> numeric order.
+> issue #4 (vault `Data Science/01.*`: add Chapter 1 missing sections —
+> Skills, R/Julia, tools, Python overview — and Chapter 2 install/Git/
+> `Statsmodels`/`XGBoost`/`LightGBM` content to `01.1`–`01.4`; rename
+> "CRISP-DM" to the instructor's "Data Science Workflow"; trim out-of-scope
+> CPython/MLOps jargon; cross-link the new `APDS/00_Introduction_Exercises`
+> and `APDS/01` TP2 Steps 4–5). Working spec: the Phase-1 audit article §6B
+> (the APDS PDFs are not in the repos — implement only what it specifies).
+> Validate with the vault wikilink checker
+> (`python scripts/check_wikilinks.py <vault-clone>`) and a Python execution
+> pass of any code you add. Then comment/close issue #4 via the REST API,
+> update `HANDOFF.md` (session record + next issue), commit and push BOTH
+> repos, and stop. If #4 is already done, take the next open issue in
+> numeric order (#3, then Stage 2 #6–#8).
 
-Recommended ordering after #2: #4 → #3 (finish the Stage-1 vault batch —
-they cross-link to the now-landed APDS/01 TP2 Steps 4–5), then Stage 2 batch
+Recommended ordering after #4: #3 (finishes Stage 1), then Stage 2 batch
 (#6, #7, #8), then #13–#19 Stage 4 APDS labs. Prefer finishing a stage's
 APDS+vault issues together so cross-references land in one push.
 
