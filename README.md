@@ -154,6 +154,20 @@ What each check covers:
 - `TAI/images/` is the single deduplicated image dataset; runtime outputs
   never pollute it.
 
+## Dependency Decisions
+
+- **`plotly` + `unidecode` are installed** (Chapter 4 Part 2 interactive
+  figures; Chapter 5 text normalization). Both import cleanly in the unified
+  environment.
+- **Basemap is NOT installed — taught conceptually.** Chapter 4 Part 2
+  (pp. 20–23) presents `mpl_toolkits.basemap.Basemap` (Mercator projection,
+  coastlines/countries, `m(lon, lat)`), but the chapter itself flags the
+  toolkit as deprecated in favor of **Cartopy**, and `basemap` wheels are
+  install-fragile on Python 3.11+/Windows (requires GEOS/PROJ system
+  binaries). Decision: the vault note teaches the Basemap API at concept
+  level with the deprecation + Cartopy successor note; no repository code
+  imports it, so it stays out of `requirements.txt` (tracked in issue #12).
+
 ## Git
 
 This workspace is maintained as **one** Git repository; `APDS/` and `TAI/`

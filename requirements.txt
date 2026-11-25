@@ -21,6 +21,12 @@ pillow>=10.0
 # --- Plotting ---------------------------------------------------------------
 matplotlib>=3.8
 seaborn>=0.13
+# Interactive web figures for Chapter 4 Part 2 (px.bar / px.scatter / px.line)
+plotly>=5.18
+
+# --- Text normalization -----------------------------------------------------
+# Accent folding for Chapter 5 text cleaning (unidecode BEFORE regex stripping)
+unidecode>=1.3
 
 # --- Notebooks / Jupyter ecosystem ------------------------------------------
 jupyter>=1.0
