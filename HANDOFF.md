@@ -112,13 +112,6 @@ block extracted & executed, outputs equal `TAI/utils/metrics.py` exactly.
 - Post-issue comments via a small Python script (shell heredoc + JSON quoting
   mangles bodies; see `scripts/comment_issues_22_5.py` pattern).
 
-## Remaining / blocked
-- 31 issues open (#2–#21, #23–#33, #35). Nothing blocked.
-- Reminder for content sessions: the APDS-side issues rely on the article's
-  transcription of the PDFs; keep implementations strictly within what the
-  article + PDF-derived details state, and record any ambiguity as an issue
-  comment rather than guessing.
-
 ## Session 3 — issue #2 (APDS/00_Introduction_Exercises, TP1)
 
 **Completed work** (lab commit `1805a03`; issue #2 commented, left OPEN —
@@ -147,29 +140,86 @@ see blocker):
   where the article gives exact commands/values, implement them; where it
   gives only structure, scaffold + placeholder + issue comment.
 
+## Session 4 — issues #4, #3, #6, #11, #7 (Stage 1+2 sweep, branch policy change)
+
+**Branch policy change (user directive):** from this session on, ALL pushes
+go ONLY to `image-processing-data-science` — never `master`/`main`. The lab
+repo's `image-processing-data-science` branch was cut from master (`c318552`)
+and pushed; AGENT.md §1 records the rule.
+
+**Completed work** (5 issues; vault `97e31f4`, `d66640f`, `b91b919`; lab
+`19e6dc8`, `cc531da` — all on `image-processing-data-science`):
+1. **#4 — vault 01.3/01.4:** python.org-vs-Anaconda install section; 5th IDE
+   (JupyterLab); main-DS-libraries table incl. Statsmodels/XGBoost/LightGBM;
+   full Git workflow (init→push + day-to-day cycle). 01.4: stats corrected
+   against the real CSV (mean age 46.2, chol 230, per-patient hypertensive
+   rows), new TP2 Steps 4–5 section, CSV block byte-verified.
+2. **#3 — vault 01.1 rename:** `01.1 ... CRISP-DM Workflow.md` → `01.1 ...
+   8-Step Data Science Workflow.md` (git mv, 5 inbound links fixed); explicit
+   "not CRISP-DM" callout; 8 steps rewritten course-scope (Docker/FastAPI/
+   AUC-ROC demoted to supplementary); new sections: Skills, R/Julia, Python
+   tools (PySpark/Dask/SQLAlchemy), Python overview, TP1 link. Quiz 01: 8
+   CRISP-DM wordings replaced (semantics preserved), validator 237 ALL VALID.
+3. **#6 — vault 02.*:** lambda/map/filter/sorted (02.4), strings+f-strings
+   (02.1), list slicing/concat/repeat + `[[]]*3` trap (02.2), tuples + set
+   methods with discard/remove trap (02.3), json/DictWriter/text-modes
+   (02.10), class-vs-instance attrs + extended dunders + naming table (02.8).
+   CPython internals demoted to supplementary callouts (02.1/02.2/02.3/02.6).
+   Every snippet executed & asserted; wikilinks 1027, 0 broken.
+4. **#11 — lab requirements:** `plotly>=5.18` + `unidecode>=1.3` added;
+   README "Dependency Decisions" documents Basemap NOT installed (deprecated,
+   Cartopy successor, GEOS/PROJ fragility). pip check clean; imports tested.
+5. **#7 — lab APDS/03+04:** report.txt headers fixed (`Min average` etc.,
+   notebook re-executed); APDS/04 Ex 6: `generate_large_products_csv`,
+   `stream_products`, `total_inventory_value`, notebook §4 benchmark (asserts
+   list-vs-generator totals equal), `run_products_benchmark`, 6 new tests.
+
+**Validation:** pytest **182 passed** (176+6) · execute_notebooks **23/23,
+0 errors** · verify_repo PASS · pip check clean · wikilinks 0 broken ·
+quiz validator 237 questions ALL VALID · all added snippets executed.
+
+**New verified facts / lessons:**
+- Quiz validator takes explicit paths; `Quiz/00. Quiz Master Index.md` is an
+  index (not a bank) and fails frontmatter checks by design — validate the
+  `Quiz 0X` files themselves.
+- Shell heredocs corrupt nested-quote Python (the Session 2 lesson recurred —
+  one retry on the #7 tests); persisted scripts in the agent workspace
+  `scripts/` folder (outside both repos) are the only reliable route for
+  code with nested quotes. One such failed heredoc also died before writing
+  `.gitignore` — always verify the intended side effect happened.
+- `s.find("cie")` on `"  Data Science  "` is 8 (not 11) — snippet-execution
+  verification caught the note's own comment error before commit.
+
+## Remaining / blocked
+- 26 issues open: #2 (awaiting TP1 handout text — placeholders committed),
+  #8–#10, #12–#21, #23–#33, #35. Nothing blocked otherwise.
+- Reminder for content sessions: the APDS-side issues rely on the article's
+  transcription of the PDFs; keep implementations strictly within what the
+  article + PDF-derived details state, and record any ambiguity as an issue
+  comment rather than guessing.
+
 ## Next session
 
-**Execute issue #4: "[stage-1][track-vault] Data Science 01.1–01.4: Chapter 1–2 content completion"** (next in numeric order per HANDOFF ordering: #4 → #3).
+**Execute issue #8: "[stage-2][track-apds] APDS/02: processed-data step + Product.__str__ showcase in analysis.ipynb"** (next open in numeric order; small, well-scoped, pairs with the just-landed #7 streaming work).
 
 Continuation prompt (paste as-is):
 
 > You are continuing the APSD_TAI_LAB / Obsidian-vault curriculum work. Read
-> `AGENT.md` and `HANDOFF.md` in the APSD_TAI_LAB clone, then execute GitHub
-> issue #4 (vault `Data Science/01.*`: add Chapter 1 missing sections —
-> Skills, R/Julia, tools, Python overview — and Chapter 2 install/Git/
-> `Statsmodels`/`XGBoost`/`LightGBM` content to `01.1`–`01.4`; rename
-> "CRISP-DM" to the instructor's "Data Science Workflow"; trim out-of-scope
-> CPython/MLOps jargon; cross-link the new `APDS/00_Introduction_Exercises`
-> and `APDS/01` TP2 Steps 4–5). Working spec: the Phase-1 audit article §6B
-> (the APDS PDFs are not in the repos — implement only what it specifies).
-> Validate with the vault wikilink checker
-> (`python scripts/check_wikilinks.py <vault-clone>`) and a Python execution
-> pass of any code you add. Then comment/close issue #4 via the REST API,
-> update `HANDOFF.md` (session record + next issue), commit and push BOTH
-> repos, and stop. If #4 is already done, take the next open issue in
-> numeric order (#3, then Stage 2 #6–#8).
+> `AGENT.md` and `HANDOFF.md` in the APSD_TAI_LAB clone (branch
+> `image-processing-data-science` — ALL pushes go there only, never
+> master/main), then execute GitHub issue #8 (APDS/02: add the
+> data/processed/ workflow step and showcase `Product.__str__` in
+> `notebooks/analysis.ipynb`, per Tutorial 03 / the Phase-1 audit article §6A;
+> update the project README). Validate with `python -m pytest -q` (182
+> passing expected), `MPLBACKEND=Agg python scripts/execute_notebooks.py`
+> (23/23, 0 cell errors), `python scripts/verify_repo.py` (PASS). Then close
+> issue #8 via the REST API with an evidence comment, update `HANDOFF.md`
+> (session record + next issue), commit and push to
+> `image-processing-data-science` only, and stop. If #8 is already done, take
+> the next open issue in numeric order (#9, then #10, then #12+).
 
-Recommended ordering after #4: #3 (finishes Stage 1), then Stage 2 batch
-(#6, #7, #8), then #13–#19 Stage 4 APDS labs. Prefer finishing a stage's
-APDS+vault issues together so cross-references land in one push.
+Recommended ordering after #8: #9 (03.1 bridge) → #10 (03.5/10.5) → #12
+(Plotly/Basemap notes) — the Stage 3/4 vault cluster; then #13–#19 (Stage 4
+APDS labs) and #23–#29 (TAI sync + bug clusters). Keep 1–2 issues per
+session unless they are as small as #11.
 

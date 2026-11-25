@@ -9,9 +9,14 @@ next issue to execute.
 
 | Repo | Role | Branch |
 | --- | --- | --- |
-| `Vtheonly/APSD_TAI_LAB` | Code & labs: `APDS/` (data science), `TAI/` (image processing), `TAI/utils/`, `TAI/docs/`, `TAI/images/`, `tests/`, `scripts/` | `main` |
+| `Vtheonly/APSD_TAI_LAB` | Code & labs: `APDS/` (data science), `TAI/` (image processing), `TAI/utils/`, `TAI/docs/`, `TAI/images/`, `tests/`, `scripts/` | `image-processing-data-science` |
 | `Vtheonly/UMBB-Master-1` | Obsidian vault: `Data Science/`, `TAI/` (formerly `Image Processing/`), `Libraries/`, `Quiz/` | `image-processing-data-science` |
 
+- **Branch policy (Session 4+):** ALL pushes go ONLY to the
+  `image-processing-data-science` branch of each repository — NEVER to
+  `master`/`main`. `APSD_TAI_LAB`'s `master` still carries the Sessions 1–3
+  history; the working branch was cut from it (at `c318552`) and is now the
+  head of all further work.
 - Keep the two clones side by side (this repo and the vault checkout of
   `UMBB-Master-1` branch `image-processing-data-science`). Push URLs embed the
   PAT (already configured); never write the PAT into any committed file.
