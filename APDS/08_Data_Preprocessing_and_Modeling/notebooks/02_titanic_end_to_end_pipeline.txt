@@ -1,0 +1,183 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 05 - Exercise 02: Titanic Predictive Pipeline & Evaluation
+
+Builds an end-to-end pipeline: cleaning, feature engineering, categorical
+encoding, train/test split, feature scaling, and classifier evaluation.
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+Locates the `APDS/08_Data_Preprocessing_and_Modeling/` project folder (anchored on `data/messy_medical.csv` (the dataset itself comes from `seaborn.load_dataset('titanic')`, which needs internet access)) by walking upward from the
+current working directory — so the notebook runs identically from the repository
+root, the project folder or its `notebooks/` sub-folder. On Google Colab the
+repository is cloned into `/content/APSD_TAI_LAB` automatically (opening the
+notebook directly from GitHub also works). The resolved project folder is added
+to `sys.path` so its local modules (e.g. `utils`, `students`) import cleanly.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_NAME = "08_Data_Preprocessing_and_Modeling"
+ANCHOR_REL = "data/messy_medical.csv"  # file that uniquely identifies the project folder
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "APDS").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+    PROJ_DIR = _repo / "APDS" / PROJECT_NAME
+else:
+    # Local IDE / Jupyter: find the project folder by walking upward from the
+    # working directory (works from the repo root, the project folder or its
+    # notebooks/ sub-folder, regardless of where Jupyter was launched).
+    _cwd = Path.cwd().resolve()
+    PROJ_DIR = next(
+        (
+            c / "APDS" / PROJECT_NAME
+            for c in (_cwd, *_cwd.parents)
+            if (c / "APDS" / PROJECT_NAME / ANCHOR_REL).exists()
+        ),
+        None,
+    )
+    if PROJ_DIR is None:
+        raise FileNotFoundError(
+            f"Project folder APDS/{PROJECT_NAME} (anchor: {ANCHOR_REL}) not found "
+            f"above {_cwd}. Launch Jupyter from inside the cloned repository."
+        )
+if str(PROJ_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJ_DIR))
+
+print(f"Project folder : {PROJ_DIR}")
+print(f"Google Colab   : {IN_COLAB}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+### 1. Load the Dataset
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+
+raw_df = sns.load_dataset("titanic")
+print("Columns loaded:", list(raw_df.columns))
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+### 2. Data Cleaning & Feature Engineering
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+# Drop redundant or heavily missing columns
+df = raw_df.drop(columns=["deck", "alive", "embark_town", "who", "class"])
+
+# Impute missing values
+df["age"] = SimpleImputer(strategy="median").fit_transform(df[["age"]])
+df["embarked"] = SimpleImputer(strategy="most_frequent").fit_transform(df[["embarked"]]).ravel()
+
+# Create engineered features
+df["FamilySize"] = df["sibsp"] + df["parch"] + 1
+df["IsAlone"] = np.where(df["FamilySize"] == 1, 1, 0)
+df = df.drop(columns=["sibsp", "parch"])
+
+# Encode categorical variables
+df = pd.get_dummies(df, columns=["sex", "embarked"], drop_first=True, dtype=int)
+for b_col in ["adult_male", "alone"]:
+    df[b_col] = df[b_col].astype(int)
+
+display(df.head())
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+### 3. Train-Test Split & Scaling
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+X = df.drop(columns=["survived"])
+y = df["survived"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+
+scale_cols = ["age", "fare", "FamilySize"]
+scaler = StandardScaler()
+X_train_scaled = X_train.copy()
+X_test_scaled = X_test.copy()
+
+X_train_scaled[scale_cols] = scaler.fit_transform(X_train[scale_cols])
+X_test_scaled[scale_cols] = scaler.transform(X_test[scale_cols])
+
+
+================================================================================
+CELL 10 | MARKDOWN
+================================================================================
+
+### 4. Model Training & Evaluation
+
+
+================================================================================
+CELL 11 | CODE
+================================================================================
+
+# Logistic Regression
+lr = LogisticRegression(max_iter=500, random_state=42)
+lr.fit(X_train_scaled, y_train)
+y_pred_lr = lr.predict(X_test_scaled)
+
+# K-Nearest Neighbors
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train_scaled, y_train)
+y_pred_knn = knn.predict(X_test_scaled)
+
+print(f"Logistic Regression Accuracy: {accuracy_score(y_test, y_pred_lr):.4f}")
+print("Logistic Regression Report:\n", classification_report(y_test, y_pred_lr))
+
+print(f"\nKNN Accuracy:                 {accuracy_score(y_test, y_pred_knn):.4f}")
+print("KNN Report:\n", classification_report(y_test, y_pred_knn))
+
+

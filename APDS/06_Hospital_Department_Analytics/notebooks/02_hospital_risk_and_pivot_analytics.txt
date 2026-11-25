@@ -1,0 +1,171 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 04 - Exercise 04: Hospital Risk Scoring & Pivot Analytics
+
+Computes total costs, patient age segments, composite clinical risk scores,
+pivot aggregations, and regional exports.
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+Locates the `APDS/06_Hospital_Department_Analytics/` project folder (anchored on `data/hospital_original.csv`; exports also go to the project's `data/` folder) by walking upward from the
+current working directory — so the notebook runs identically from the repository
+root, the project folder or its `notebooks/` sub-folder. On Google Colab the
+repository is cloned into `/content/APSD_TAI_LAB` automatically (opening the
+notebook directly from GitHub also works). The resolved project folder is added
+to `sys.path` so its local modules (e.g. `utils`, `students`) import cleanly.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_NAME = "06_Hospital_Department_Analytics"
+ANCHOR_REL = "data/hospital_original.csv"  # file that uniquely identifies the project folder
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "APDS").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+    PROJ_DIR = _repo / "APDS" / PROJECT_NAME
+else:
+    # Local IDE / Jupyter: find the project folder by walking upward from the
+    # working directory (works from the repo root, the project folder or its
+    # notebooks/ sub-folder, regardless of where Jupyter was launched).
+    _cwd = Path.cwd().resolve()
+    PROJ_DIR = next(
+        (
+            c / "APDS" / PROJECT_NAME
+            for c in (_cwd, *_cwd.parents)
+            if (c / "APDS" / PROJECT_NAME / ANCHOR_REL).exists()
+        ),
+        None,
+    )
+    if PROJ_DIR is None:
+        raise FileNotFoundError(
+            f"Project folder APDS/{PROJECT_NAME} (anchor: {ANCHOR_REL}) not found "
+            f"above {_cwd}. Launch Jupyter from inside the cloned repository."
+        )
+if str(PROJ_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJ_DIR))
+
+print(f"Project folder : {PROJ_DIR}")
+print(f"Google Colab   : {IN_COLAB}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+### 1. Total Cost & Age Groups
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv(PROJ_DIR / "data" / "hospital_original.csv")
+
+df["TotalCost"] = df["DaysAdmitted"] * df["DailyCost"]
+
+def categorize_age(age):
+    if age < 30: return "Young"
+    elif 30 <= age <= 50: return "Middle"
+    else: return "Senior"
+
+df["AgeGroup"] = df["Age"].apply(categorize_age)
+df = df.rename(columns={"DailyCost": "DailyFee"})
+display(df.head())
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+### 2. Clinical Risk Score Computation
+
+$$\text{RiskScore} = (\text{DaysAdmitted} \times 0.4) + (\text{Age} \times 0.3) + (100 - \text{Satisfaction} \times 10) \times 0.3$$
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+df["RiskScore"] = (df["DaysAdmitted"] * 0.4) + (df["Age"] * 0.3) + (100 - df["Satisfaction"] * 10) * 0.3
+
+def categorize_risk(score):
+    if score > 60: return "High"
+    elif 40 <= score <= 60: return "Medium"
+    else: return "Low"
+
+df["RiskCategory"] = df["RiskScore"].apply(categorize_risk)
+df = df.sort_values(by="RiskScore", ascending=False)
+display(df[["City", "Age", "DaysAdmitted", "Satisfaction", "RiskScore", "RiskCategory"]])
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+### 3. City Summary Aggregations
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+city_summary = df.groupby("City").agg(
+    AvgTotalCost=("TotalCost", "mean"),
+    AvgSatisfaction=("Satisfaction", "mean"),
+    ReadmissionRate=("Readmitted", "mean"),
+).reset_index()
+
+display(city_summary)
+
+highest_risk = df.groupby("City")["RiskScore"].mean().idxmax()
+print(f"\nHighest Clinical Risk City: {highest_risk}")
+
+
+================================================================================
+CELL 10 | MARKDOWN
+================================================================================
+
+### 4. Data Mapping & Pivot Tables
+
+
+================================================================================
+CELL 11 | CODE
+================================================================================
+
+df["RegionCode"] = df["City"].map({"Alger": "DZ-16", "Annaba": "DZ-23", "Oran": "DZ-31"})
+df["ReadmissionStatus"] = df["Readmitted"].map({0: "No", 1: "Yes"})
+
+pivot = df.pivot_table(index="City", columns="Department", values=["TotalCost", "Satisfaction"], aggfunc="mean")
+display(pivot)
+
+# Export processed tables (into the project data folder)
+df.to_csv(PROJ_DIR / "data" / "hospital_risk.csv", index=False)
+city_summary.to_csv(PROJ_DIR / "data" / "city_summary.csv", index=False)
+print("Processed tables exported to CSV.")
+
+

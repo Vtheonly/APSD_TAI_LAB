@@ -1,0 +1,166 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 05 - Exercise 01: Medical Dataset Preprocessing Pipeline
+
+Demonstrates text standardization, missing value imputation, IQR outlier
+capping, one-hot encoding, and feature scaling.
+
+> Note: all imputations below use explicit column assignment
+> (`df[col] = df[col].fillna(...)`) — the Pandas 3.x compatible form.
+> Chained-assignment `fillna(..., inplace=True)` raises a `ChainedAssignmentError`
+> under Pandas 2+ with Copy-on-Write, and is removed in Pandas 3.
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+Locates the `APDS/08_Data_Preprocessing_and_Modeling/` project folder (anchored on `data/messy_medical.csv`) by walking upward from the
+current working directory — so the notebook runs identically from the repository
+root, the project folder or its `notebooks/` sub-folder. On Google Colab the
+repository is cloned into `/content/APSD_TAI_LAB` automatically (opening the
+notebook directly from GitHub also works). The resolved project folder is added
+to `sys.path` so its local modules (e.g. `utils`, `students`) import cleanly.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_NAME = "08_Data_Preprocessing_and_Modeling"
+ANCHOR_REL = "data/messy_medical.csv"  # file that uniquely identifies the project folder
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "APDS").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+    PROJ_DIR = _repo / "APDS" / PROJECT_NAME
+else:
+    # Local IDE / Jupyter: find the project folder by walking upward from the
+    # working directory (works from the repo root, the project folder or its
+    # notebooks/ sub-folder, regardless of where Jupyter was launched).
+    _cwd = Path.cwd().resolve()
+    PROJ_DIR = next(
+        (
+            c / "APDS" / PROJECT_NAME
+            for c in (_cwd, *_cwd.parents)
+            if (c / "APDS" / PROJECT_NAME / ANCHOR_REL).exists()
+        ),
+        None,
+    )
+    if PROJ_DIR is None:
+        raise FileNotFoundError(
+            f"Project folder APDS/{PROJECT_NAME} (anchor: {ANCHOR_REL}) not found "
+            f"above {_cwd}. Launch Jupyter from inside the cloned repository."
+        )
+if str(PROJ_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJ_DIR))
+
+print(f"Project folder : {PROJ_DIR}")
+print(f"Google Colab   : {IN_COLAB}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+### 1. Load the Messy Medical Dataset
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+df = pd.read_csv(PROJ_DIR / "data" / "messy_medical.csv")
+display(df)
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+### 2. Text Normalization & Imputation
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+# Standardize text
+for c in ["Gender", "Diagnosis"]:
+    df[c] = df[c].astype(str).str.lower().str.strip().replace({"none": np.nan, "nan": np.nan})
+
+# Mode imputation for categorical columns (Pandas 3.x safe: no chained inplace)
+df["Gender"] = df["Gender"].fillna(df["Gender"].mode()[0])
+df["Diagnosis"] = df["Diagnosis"].fillna(df["Diagnosis"].mode()[0])
+
+# Median imputation for numerical columns
+num_cols = ["Age", "BloodPressure", "Cholesterol"]
+for c in num_cols:
+    df[c] = pd.to_numeric(df[c], errors="coerce")
+    df[c] = df[c].fillna(df[c].median())
+
+display(df)
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+### 3. Outlier Capping (IQR Method)
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+for c in num_cols:
+    q1 = df[c].quantile(0.25)
+    q3 = df[c].quantile(0.75)
+    iqr = q3 - q1
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+    df[c] = df[c].clip(lower=lower, upper=upper)
+
+display(df)
+
+
+================================================================================
+CELL 10 | MARKDOWN
+================================================================================
+
+### 4. One-Hot Encoding & Standardization
+
+
+================================================================================
+CELL 11 | CODE
+================================================================================
+
+df_encoded = pd.get_dummies(df, columns=["Gender", "Diagnosis"], drop_first=True, dtype=int)
+
+scaler = StandardScaler()
+df_encoded[num_cols] = scaler.fit_transform(df_encoded[num_cols])
+
+print("--- Preprocessed Medical Dataset ---")
+display(df_encoded)
+
+

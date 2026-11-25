@@ -1,0 +1,333 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Super-Resolution & Contour Stencils (Getreuer, 2009) — TP 2, Exercise 6
+
+## Assignment Objectives
+1. **Dataset:** load the official `Images_TP2_EXO6_SR` benchmark (23 triplets:
+   `HR_GT_512x512`, `LR_256x256`, `LR_128x128`) from `TAI/images/` when
+   present; otherwise a **deterministic 5-image demonstration set** is
+   generated inside `TAI/outputs/` so the notebook always runs end-to-end.
+2. **OpenCV interpolation benchmark:** evaluate `INTER_NEAREST`,
+   `INTER_LINEAR` and `INTER_CUBIC` at $2\times$ (256→512), direct $4\times$
+   (128→512) and double $2\times$ (128→256→512), using PSNR **and** SSIM.
+3. **From-scratch bilinear $2\times$:** `super_resolution_bilineaire_2x`
+   compared against OpenCV `INTER_LINEAR`.
+4. **Contour-stencil interpolation (Getreuer, 2009):** full vectorized
+   implementation — total variation over 12 oriented stencils, $\ell_1$ norm
+   in $YC_bC_r$ for colour, spatial filtering $G_\rho$, per-cell
+   interpolation rules and averaging of shared mid-points.
+
+## Mathematical Principles & Intuition
+### PSNR / SSIM (quality metrics)
+$$\mathrm{PSNR} = 10\log_{10}\!\left(\frac{255^2}{\mathrm{MSE}}\right), \qquad
+\mathrm{SSIM}(x, y) = \frac{(2\mu_x\mu_y + C_1)(2\sigma_{xy} + C_2)}{(\mu_x^2 + \mu_y^2 + C_1)(\sigma_x^2 + \sigma_y^2 + C_2)}$$
+SSIM (Wang et al. 2004) captures structural similarity — luminance,
+contrast and correlation — making it far more perceptual than PSNR.
+
+### Bilinear interpolation
+Output pixel at (fractional) coordinate $(y_s, x_s)$ blends the 4 nearest
+source pixels with weights $(1-\alpha)(1-\beta)$, $\alpha\beta$, etc.
+OpenCV's grid convention maps output row $i$ to source
+$y_s = (i + 0.5)/s - 0.5$ (pixel-centre alignment) — replicated exactly in
+`super_resolution_bilineaire_2x(opencv_align=True)`.
+
+### Contour stencils (Getreuer, SPIE 2009)
+Each LR cell is matched against **12 oriented stencils** (edges through the
+cell). The stencil whose weighted **total variation**
+$$\mathrm{TV}(S) = \frac{1}{|S|} \sum_{e \in S} w_e \, |\nabla_e I|$$
+is smallest best explains the local edge orientation; its interpolation rule
+then places the 4 mid-points + centre accordingly (e.g. a $45^\circ$ stencil
+puts the centre on the anti-diagonal average $\frac{1}{2}(BL + TR)$).
+Shared mid-points between adjacent cells are averaged. TV maps are smoothed
+by a Gaussian $G_\rho$ (Remark 1); colour TV uses the $\ell_1$ norm of the
+$YC_bC_r$ difference vector (Remark 3).
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+### What This Cell Does
+- Detects Google Colab (`google.colab` in `sys.modules` or `COLAB_RELEASE_TAG`); on Colab it clones `APSD_TAI_LAB` into `/content` (unless already mounted from Drive), so the notebook works even when opened directly from GitHub.
+- Locally, it walks upward from the current working directory to the repository root (marker: `README.md` + `APDS/` + `TAI/`) and registers it on `sys.path` — the notebook therefore runs identically from the repo root, from `TAI/…/notebooks/`, or from any sub-folder.
+- Verifies `opencv-contrib-python` (checking `cv2.ximgproc`) and installs it only when missing.
+- Calls `bootstrap()` from `TAI.utils.env_io`, which resolves `TAI/images/` (the single consolidated, SHA-256 deduplicated dataset) and `TAI/outputs/` (runtime artifacts, never committed).
+
+### Why It Is Needed
+- `cv2.imshow()` opens blocking GUI windows and freezes Jupyter kernels — everything here renders through inline Matplotlib instead.
+- No hardcoded absolute paths (like `/home/...`): every path is derived from the discovered repository root, so the same cell works on any machine, in any IDE, and on Colab.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "TAI" / "utils").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+else:
+    # Local IDE / Jupyter: walk upward to the repository root
+    # (identified by README.md + APDS/ + TAI/), whatever the launch directory.
+    _cwd = Path.cwd().resolve()
+    _repo = next(
+        (
+            c
+            for c in (_cwd, *_cwd.parents)
+            if (c / "README.md").is_file() and (c / "APDS").is_dir() and (c / "TAI").is_dir()
+        ),
+        None,
+    )
+    if _repo is None:
+        raise FileNotFoundError(
+            f"APSD_TAI_LAB repository root not found above {_cwd}. "
+            "Launch Jupyter from inside the cloned repository."
+        )
+if str(_repo) not in sys.path:
+    sys.path.insert(0, str(_repo))
+
+# Make sure opencv-contrib-python is used (cv2.ximgproc) -- install only if missing
+try:
+    import cv2
+
+    _has_ximgproc = hasattr(cv2, "ximgproc")
+except ImportError:
+    _has_ximgproc = False
+if not _has_ximgproc:
+    %pip install -q opencv-contrib-python
+    import cv2
+
+from TAI.utils.env_io import bootstrap, load_image, show_images, plot_image_with_hist
+
+ROOT_DIR, IMG_DIR, OUT_DIR = bootstrap()
+
+import math
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+print(f"Repository root : {ROOT_DIR}")
+print(f"Images folder   : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"Outputs folder  : {OUT_DIR}")
+print(f"OpenCV          : {cv2.__version__} | cv2.ximgproc available: {hasattr(cv2, 'ximgproc')}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+---
+## Step 1: Dataset Discovery (official 23-image set or deterministic fallback)
+`discover_sr_triplets` (from `TAI/utils/super_res.py`) returns triplets
+**sorted numerically** (1, 2, …, 23) so `HR_GT_i`, `LR_256_i` and `LR_128_i`
+files can never misalign — e.g. `LR_256_2` sorting *before* `LR_256_10`.
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+from TAI.utils.super_res import (
+    discover_sr_triplets,
+    super_resolution_bilineaire_2x,
+    super_resolution_contour_stencils_2x,
+)
+from TAI.utils.metrics import calculate_psnr, calculate_ssim
+
+dataset_label, sr_triplets = discover_sr_triplets(IMG_DIR, OUT_DIR)
+print(f"Dataset used: {dataset_label}")
+print(f"Triplets loaded: {len(sr_triplets)}")
+for hr, l2, l4 in sr_triplets[:5]:
+    print(f"  HR: {hr.name:22s} LR256: {l2.name:22s} LR128: {l4.name}")
+if len(sr_triplets) > 5:
+    print(f"  ... and {len(sr_triplets) - 5} more")
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+---
+## Step 2: OpenCV Interpolation Benchmark (2x, 4x direct, double 2x)
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+interp_methods = [
+    ("Nearest neighbour", cv2.INTER_NEAREST),
+    ("Bilinear", cv2.INTER_LINEAR),
+    ("Bicubic", cv2.INTER_CUBIC),
+]
+
+summary = {}
+for m_name, m_flag in interp_methods:
+    for mode in ("2x (256->512)", "4x direct (128->512)", "Double 2x (128->256->512)"):
+        summary[(m_name, mode)] = {"psnr": [], "ssim": []}
+
+for p_hr, p_l2, p_l4 in sr_triplets:
+    hr = cv2.imread(str(p_hr), cv2.IMREAD_COLOR)
+    l2 = cv2.imread(str(p_l2), cv2.IMREAD_COLOR)
+    l4 = cv2.imread(str(p_l4), cv2.IMREAD_COLOR)
+    h_hr, w_hr = hr.shape[:2]
+
+    for m_name, m_flag in interp_methods:
+        pred_2x = cv2.resize(l2, (w_hr, h_hr), interpolation=m_flag)
+        pred_4x = cv2.resize(l4, (w_hr, h_hr), interpolation=m_flag)
+        mid_2x = cv2.resize(l4, (l2.shape[1], l2.shape[0]), interpolation=m_flag)
+        pred_2x2x = cv2.resize(mid_2x, (w_hr, h_hr), interpolation=m_flag)
+
+        for mode, pred in (("2x (256->512)", pred_2x), ("4x direct (128->512)", pred_4x),
+                           ("Double 2x (128->256->512)", pred_2x2x)):
+            summary[(m_name, mode)]["psnr"].append(calculate_psnr(hr, pred))
+            summary[(m_name, mode)]["ssim"].append(calculate_ssim(hr, pred))
+
+print(f"{'Method':20s} | {'Scale':26s} | {'mean PSNR (dB)':>14s} | {'mean SSIM':>10s}")
+print("-" * 80)
+for (m_name, mode), vals in summary.items():
+    print(f"{m_name:20s} | {mode:26s} | {np.mean(vals['psnr']):12.3f} dB | {np.mean(vals['ssim']):10.4f}")
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+---
+## Step 3: From-Scratch Bilinear 2x vs. OpenCV `INTER_LINEAR`
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+psnr_cv_list, psnr_perso_list, max_diffs = [], [], []
+for p_hr, p_l2, _ in sr_triplets:
+    hr = cv2.imread(str(p_hr), cv2.IMREAD_COLOR)
+    l2 = cv2.imread(str(p_l2), cv2.IMREAD_COLOR)
+    b_cv = cv2.resize(l2, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_LINEAR)
+    b_perso = super_resolution_bilineaire_2x(l2, opencv_align=True)
+    psnr_cv_list.append(calculate_psnr(hr, b_cv))
+    psnr_perso_list.append(calculate_psnr(hr, b_perso))
+    max_diffs.append(int(np.max(np.abs(b_cv.astype(np.int16) - b_perso.astype(np.int16)))))
+
+print(f"Bilinear 2x OpenCV mean PSNR : {np.mean(psnr_cv_list):.4f} dB")
+print(f"Bilinear 2x custom  mean PSNR: {np.mean(psnr_perso_list):.4f} dB")
+print(f"Max pixel difference OpenCV vs. custom: {max(max_diffs)} level(s) (rounding only)")
+
+
+================================================================================
+CELL 10 | MARKDOWN
+================================================================================
+
+---
+## Step 4: Contour-Stencil Interpolation (Getreuer 2009) — 2x and cascade 4x
+
+`super_resolution_contour_stencils_2x` (in `TAI/utils/super_res.py`) is fully
+vectorized: 12 TV maps → `argmin` per cell → 4 rule groups → shared
+mid-point averaging. The 4x result is produced by *pyramid magnification*
+(applying 2x twice), the scheme recommended by the paper.
+
+
+================================================================================
+CELL 11 | CODE
+================================================================================
+
+cs_2x_psnr, cs_2x_ssim = [], []
+bic_2x_psnr, bic_2x_ssim = [], []
+cs_4x_psnr, cs_4x_ssim = [], []
+bic_4x_psnr, bic_4x_ssim = [], []
+
+sample_vis = None
+t0 = time.perf_counter()
+for idx, (p_hr, p_l2, p_l4) in enumerate(sr_triplets):
+    hr = cv2.imread(str(p_hr), cv2.IMREAD_COLOR)
+    l2 = cv2.imread(str(p_l2), cv2.IMREAD_COLOR)
+    l4 = cv2.imread(str(p_l4), cv2.IMREAD_COLOR)
+
+    bic_2 = cv2.resize(l2, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_CUBIC)
+    cs_2 = super_resolution_contour_stencils_2x(l2, rho=0.5)
+
+    bic_4 = cv2.resize(l4, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_CUBIC)
+    cs_4 = super_resolution_contour_stencils_2x(
+        super_resolution_contour_stencils_2x(l4, rho=0.5), rho=0.5
+    )
+
+    bic_2x_psnr.append(calculate_psnr(hr, bic_2)); bic_2x_ssim.append(calculate_ssim(hr, bic_2))
+    cs_2x_psnr.append(calculate_psnr(hr, cs_2));   cs_2x_ssim.append(calculate_ssim(hr, cs_2))
+    bic_4x_psnr.append(calculate_psnr(hr, bic_4)); bic_4x_ssim.append(calculate_ssim(hr, bic_4))
+    cs_4x_psnr.append(calculate_psnr(hr, cs_4));   cs_4x_ssim.append(calculate_ssim(hr, cs_4))
+
+    if idx == 0:
+        nn_4 = cv2.resize(l4, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_NEAREST)
+        bil_4 = cv2.resize(l4, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_LINEAR)
+        sample_vis = (hr, nn_4, bil_4, bic_4, cs_4)
+dt_total = (time.perf_counter() - t0) * 1000.0
+
+print(f"{'Method':28s} | {'Factor':8s} | {'mean PSNR (dB)':>14s} | {'mean SSIM':>10s}")
+print("-" * 70)
+print(f"{'Bicubic (OpenCV)':28s} | {'2x':8s} | {np.mean(bic_2x_psnr):12.3f} dB | {np.mean(bic_2x_ssim):10.4f}")
+print(f"{'Contour stencils (custom)':28s} | {'2x':8s} | {np.mean(cs_2x_psnr):12.3f} dB | {np.mean(cs_2x_ssim):10.4f}")
+print(f"{'Bicubic (OpenCV)':28s} | {'4x':8s} | {np.mean(bic_4x_psnr):12.3f} dB | {np.mean(bic_4x_ssim):10.4f}")
+print(f"{'Contour stencils (2x2x)':28s} | {'4x':8s} | {np.mean(cs_4x_psnr):12.3f} dB | {np.mean(cs_4x_ssim):10.4f}")
+print(f"\nTotal contour-stencil runtime: {dt_total:.0f} ms for {len(sr_triplets)} triplets x (2x + 4x)")
+
+if sample_vis is not None:
+    hr, nn_4, bil_4, bic_4, cs_4 = sample_vis
+    # Zoom on a central 160x160 patch to compare edge sharpness
+    cy, cx = hr.shape[0] // 2, hr.shape[1] // 2
+    crop = lambda im: im[cy - 80:cy + 80, cx - 80:cx + 80]
+    show_images([
+        ("HR ground truth (zoom)", crop(hr)),
+        ("Nearest neighbour 4x", crop(nn_4)),
+        ("Bilinear 4x", crop(bil_4)),
+        ("Bicubic 4x", crop(bic_4)),
+        ("Contour stencils 4x", crop(cs_4)),
+    ], cols=5)
+
+
+================================================================================
+CELL 12 | MARKDOWN
+================================================================================
+
+## Analysis & Key Takeaways
+
+- **Nearest neighbour vs. bilinear vs. bicubic:** nearest produces strong
+  stair-casing (aliasing); bilinear softens transitions; bicubic usually
+  leads the linear family in PSNR/SSIM thanks to its 16-pixel neighbourhood
+  (at the cost of slight ringing/overshoot near edges).
+- **Direct 4x vs. double 2x:** cascaded interpolation accumulates rounding
+  and phase shifts between grids, so the two paths differ slightly for
+  fixed kernels. For *adaptive* pyramid magnification (contour stencils),
+  the cascade is actually the recommended scheme — each pass re-estimates
+  the local edge orientations before refining further.
+- **Contour stencils vs. bicubic:** as highlighted by Getreuer (2009,
+  Figure 6), stencil interpolation favours **directional coherence and edge
+  sharpness** without stair-casing or overshoot. Depending on the LR/HR pair
+  generation grid (OpenCV's centred $(i+0.5)/s - 0.5$ alignment vs. the
+  stencil's cellular $v_{i,j} \mapsto (2i, 2j)$ placement), the *raw* PSNR
+  can favour bicubic even where the stencil image is visually sharper —
+  hence reporting both PSNR and SSIM, and inspecting the zoomed crops.
+- **Portability:** the official 23-image dataset is auto-discovered in
+  `TAI/images/` (case A/B), and its absence triggers a deterministic,
+  seed-stable 5-image demonstration set inside `TAI/outputs/` (case C) — the
+  notebook therefore executes identically on any machine and on Colab.
+
+

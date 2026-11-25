@@ -1,0 +1,213 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Grayscale & Colour Image Histograms (TP 1 — Exercise 5)
+
+## Assignment Objectives
+1. Compute the histograms of `tp1_tp2_cameraman_gray.bmp` (`im1`) and
+   `tp1_exo4_exo5_peppers_color.bmp` (`im2`) with `cv2.calcHist()`.
+2. Visualise the histograms with Matplotlib.
+3. Implement the from-scratch algorithm `calcul_histogramme_perso()` and verify
+   **exact equality** with OpenCV.
+
+## Mathematical Principles & Intuition
+The histogram of an 8-bit image counts the population of each intensity level:
+$$h(k) = \#\{(y,x) : I(y,x) = k\}, \quad k \in \{0, \dots, 255\}$$
+- It is a **global** first-order statistic (no spatial information): two very
+  different images can share a histogram.
+- $\sum_k h(k) = H \cdot W$; the normalised $p(k) = h(k)/(HW)$ is the discrete
+  intensity distribution — the basis of Otsu thresholding, equalization, AHE
+  and CLAHE (see the contrast lab).
+- For colour images each channel gets its own histogram (B, G, R here).
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+### What This Cell Does
+- Detects Google Colab (`google.colab` in `sys.modules` or `COLAB_RELEASE_TAG`); on Colab it clones `APSD_TAI_LAB` into `/content` (unless already mounted from Drive), so the notebook works even when opened directly from GitHub.
+- Locally, it walks upward from the current working directory to the repository root (marker: `README.md` + `APDS/` + `TAI/`) and registers it on `sys.path` — the notebook therefore runs identically from the repo root, from `TAI/…/notebooks/`, or from any sub-folder.
+- Verifies `opencv-contrib-python` (checking `cv2.ximgproc`) and installs it only when missing.
+- Calls `bootstrap()` from `TAI.utils.env_io`, which resolves `TAI/images/` (the single consolidated, SHA-256 deduplicated dataset) and `TAI/outputs/` (runtime artifacts, never committed).
+
+### Why It Is Needed
+- `cv2.imshow()` opens blocking GUI windows and freezes Jupyter kernels — everything here renders through inline Matplotlib instead.
+- No hardcoded absolute paths (like `/home/...`): every path is derived from the discovered repository root, so the same cell works on any machine, in any IDE, and on Colab.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "TAI" / "utils").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+else:
+    # Local IDE / Jupyter: walk upward to the repository root
+    # (identified by README.md + APDS/ + TAI/), whatever the launch directory.
+    _cwd = Path.cwd().resolve()
+    _repo = next(
+        (
+            c
+            for c in (_cwd, *_cwd.parents)
+            if (c / "README.md").is_file() and (c / "APDS").is_dir() and (c / "TAI").is_dir()
+        ),
+        None,
+    )
+    if _repo is None:
+        raise FileNotFoundError(
+            f"APSD_TAI_LAB repository root not found above {_cwd}. "
+            "Launch Jupyter from inside the cloned repository."
+        )
+if str(_repo) not in sys.path:
+    sys.path.insert(0, str(_repo))
+
+# Make sure opencv-contrib-python is used (cv2.ximgproc) -- install only if missing
+try:
+    import cv2
+
+    _has_ximgproc = hasattr(cv2, "ximgproc")
+except ImportError:
+    _has_ximgproc = False
+if not _has_ximgproc:
+    %pip install -q opencv-contrib-python
+    import cv2
+
+from TAI.utils.env_io import bootstrap, load_image, show_images, plot_image_with_hist
+
+ROOT_DIR, IMG_DIR, OUT_DIR = bootstrap()
+
+import math
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+print(f"Repository root : {ROOT_DIR}")
+print(f"Images folder   : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"Outputs folder  : {OUT_DIR}")
+print(f"OpenCV          : {cv2.__version__} | cv2.ximgproc available: {hasattr(cv2, 'ximgproc')}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+---
+## Step 1: OpenCV Histograms
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+im1 = load_image("tp1_tp2_cameraman_gray.bmp", cv2.IMREAD_GRAYSCALE)
+im2 = load_image("tp1_exo4_exo5_peppers_color.bmp", cv2.IMREAD_COLOR)
+
+hist1 = cv2.calcHist([im1], [0], None, [256], [0, 256]).ravel()
+hist2_B = cv2.calcHist([im2], [0], None, [256], [0, 256]).ravel()
+hist2_G = cv2.calcHist([im2], [1], None, [256], [0, 256]).ravel()
+hist2_R = cv2.calcHist([im2], [2], None, [256], [0, 256]).ravel()
+
+print(f"im1: {im1.shape}  | sum(histogram) = {hist1.sum():.0f} (= {im1.size} pixels)")
+print(f"im2: {im2.shape} | sum per channel = {hist2_B.sum():.0f} / {hist2_G.sum():.0f} / {hist2_R.sum():.0f}")
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+---
+## Step 2: From-Scratch Histogram & Bit-for-Bit Verification
+`calcul_histogramme_perso` (from `TAI.utils.basics`) increments the bin of
+every pixel in an explicit loop — the same $O(HW)$ traversal as OpenCV, just
+in pure Python.
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+from TAI.utils.basics import calcul_histogramme_perso
+
+import time
+
+t0 = time.perf_counter()
+histp1 = calcul_histogramme_perso(im1)
+dt_perso = (time.perf_counter() - t0) * 1000
+t0 = time.perf_counter()
+histp2_B = calcul_histogramme_perso(im2[:, :, 0])
+dt_cv = (time.perf_counter() - t0) * 1000
+
+print(f"{'Comparison':32s} | {'Exact equality':>15s}")
+print("-" * 52)
+for label, ref, perso in [
+    ("Cameraman grayscale", hist1, histp1),
+    ("Peppers channel B", hist2_B, histp2_B),
+    ("Peppers channel G", hist2_G, calcul_histogramme_perso(im2[:, :, 1])),
+    ("Peppers channel R", hist2_R, calcul_histogramme_perso(im2[:, :, 2])),
+]:
+    print(f"{label:32s} | {str(np.array_equal(ref, perso)):>15s}")
+
+print(f"\nRuntime on one 512x512 channel: loop {dt_perso:.0f} ms vs OpenCV {dt_cv:.3f} ms")
+
+
+================================================================================
+CELL 8 | CODE
+================================================================================
+
+fig, axes = plt.subplots(2, 2, figsize=(13, 8))
+
+axes[0, 0].imshow(im1, cmap="gray", vmin=0, vmax=255)
+axes[0, 0].set_title("im1: Cameraman (grayscale)")
+axes[0, 0].axis("off")
+
+axes[0, 1].plot(hist1, color="black", label="cv2.calcHist")
+axes[0, 1].plot(histp1, "--", color="orange", label="calcul_histogramme_perso")
+axes[0, 1].set_title("Histogram of im1 (overlay of both implementations)")
+axes[0, 1].set_xlim([0, 255]); axes[0, 1].set_xlabel("Gray level")
+axes[0, 1].set_ylabel("Pixel count"); axes[0, 1].legend(); axes[0, 1].grid(alpha=0.3)
+
+axes[1, 0].imshow(cv2.cvtColor(im2, cv2.COLOR_BGR2RGB))
+axes[1, 0].set_title("im2: Peppers (colour)")
+axes[1, 0].axis("off")
+
+axes[1, 1].plot(hist2_R, color="red", label="R")
+axes[1, 1].plot(hist2_G, color="green", label="G")
+axes[1, 1].plot(hist2_B, color="blue", label="B")
+axes[1, 1].set_title("Per-channel histograms of im2")
+axes[1, 1].set_xlim([0, 255]); axes[1, 1].set_xlabel("Intensity")
+axes[1, 1].set_ylabel("Pixel count"); axes[1, 1].legend(); axes[1, 1].grid(alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+
+================================================================================
+CELL 9 | MARKDOWN
+================================================================================
+
+## Analysis & Key Takeaways
+- `calcul_histogramme_perso` equals `cv2.calcHist` **exactly** on the grayscale image and on every colour channel — the explicit loop and the library routine count the very same bins.
+- The Cameraman histogram is bimodal (dark sky vs bright scene) — precisely why it is the classic Otsu/thresholding test image.
+- A 256-bin `float32` histogram costs 1 KB regardless of image size: histograms are cheap **statistics**, losing all spatial layout.
+- NumPy's `np.bincount` (used inside `TAI.utils.contrast`) computes the same histogram in vectorised C speed — the go-to for production code.
+
+

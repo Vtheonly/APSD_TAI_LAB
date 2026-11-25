@@ -1,0 +1,190 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Image Manipulation & Specialized Libraries (TP 1 — Exercise 2)
+
+## Assignment Objectives
+1. Load `tp1_exo2_boats_color.bmp` in **colour (BGR)** and in **grayscale** — both via `cv2.imread(..., cv2.IMREAD_GRAYSCALE)` and via `cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)`.
+2. Read the BGR value of the pixel at position `(y=100, x=150)`.
+3. Display the image dimensions `(height, width, channels)`.
+4. Draw a horizontal **red** line (`[0, 0, 255]` in BGR) across the middle of the image.
+
+## Mathematical Principles & Intuition
+- An 8-bit colour image is a 3-D array $I \in \{0,\dots,255\}^{H \times W \times 3}$; OpenCV stores channels in **BGR** order (Matplotlib expects RGB — hence `cv2.cvtColor` before display).
+- Grayscale conversion uses the luminance-weighted sum
+  $$Y = 0.299\,R + 0.587\,G + 0.114\,B$$
+  which matches human perception (green dominates perceived brightness).
+- Pixel access `img[y, x]` follows *(row, column)* = *(y, x)* indexing — mixing the two is the classic off-by-one bug.
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+### What This Cell Does
+- Detects Google Colab (`google.colab` in `sys.modules` or `COLAB_RELEASE_TAG`); on Colab it clones `APSD_TAI_LAB` into `/content` (unless already mounted from Drive), so the notebook works even when opened directly from GitHub.
+- Locally, it walks upward from the current working directory to the repository root (marker: `README.md` + `APDS/` + `TAI/`) and registers it on `sys.path` — the notebook therefore runs identically from the repo root, from `TAI/…/notebooks/`, or from any sub-folder.
+- Verifies `opencv-contrib-python` (checking `cv2.ximgproc`) and installs it only when missing.
+- Calls `bootstrap()` from `TAI.utils.env_io`, which resolves `TAI/images/` (the single consolidated, SHA-256 deduplicated dataset) and `TAI/outputs/` (runtime artifacts, never committed).
+
+### Why It Is Needed
+- `cv2.imshow()` opens blocking GUI windows and freezes Jupyter kernels — everything here renders through inline Matplotlib instead.
+- No hardcoded absolute paths (like `/home/...`): every path is derived from the discovered repository root, so the same cell works on any machine, in any IDE, and on Colab.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "TAI" / "utils").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+else:
+    # Local IDE / Jupyter: walk upward to the repository root
+    # (identified by README.md + APDS/ + TAI/), whatever the launch directory.
+    _cwd = Path.cwd().resolve()
+    _repo = next(
+        (
+            c
+            for c in (_cwd, *_cwd.parents)
+            if (c / "README.md").is_file() and (c / "APDS").is_dir() and (c / "TAI").is_dir()
+        ),
+        None,
+    )
+    if _repo is None:
+        raise FileNotFoundError(
+            f"APSD_TAI_LAB repository root not found above {_cwd}. "
+            "Launch Jupyter from inside the cloned repository."
+        )
+if str(_repo) not in sys.path:
+    sys.path.insert(0, str(_repo))
+
+# Make sure opencv-contrib-python is used (cv2.ximgproc) -- install only if missing
+try:
+    import cv2
+
+    _has_ximgproc = hasattr(cv2, "ximgproc")
+except ImportError:
+    _has_ximgproc = False
+if not _has_ximgproc:
+    %pip install -q opencv-contrib-python
+    import cv2
+
+from TAI.utils.env_io import bootstrap, load_image, show_images, plot_image_with_hist
+
+ROOT_DIR, IMG_DIR, OUT_DIR = bootstrap()
+
+import math
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+print(f"Repository root : {ROOT_DIR}")
+print(f"Images folder   : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"Outputs folder  : {OUT_DIR}")
+print(f"OpenCV          : {cv2.__version__} | cv2.ximgproc available: {hasattr(cv2, 'ximgproc')}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+---
+## Step 1: Colour & Grayscale Loading
+Both loading strategies must agree: reading with `IMREAD_GRAYSCALE` and
+converting the colour image with `COLOR_BGR2GRAY` produce (up to rounding) the
+same luminance image.
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+img = load_image("tp1_exo2_boats_color.bmp", cv2.IMREAD_COLOR)
+gray_img = load_image("tp1_exo2_boats_color.bmp", cv2.IMREAD_GRAYSCALE)
+gray_img2 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+max_gray_diff = int(np.max(np.abs(gray_img.astype(np.int16) - gray_img2.astype(np.int16))))
+print(f"Max |IMREAD_GRAYSCALE - cvtColor(BGR2GRAY)| : {max_gray_diff} level(s) (codec rounding)")
+
+show_images([
+    ("Original (BGR shown as RGB)", img),
+    ("Loaded with IMREAD_GRAYSCALE", gray_img),
+    ("Converted with cvtColor", gray_img2),
+], cols=3)
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+---
+## Step 2: Pixel Values & Dimensions
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+# BGR value of the pixel at (y=100, x=150)
+pixel = img[100, 150]
+print(f"BGR value at (y=100, x=150) : {pixel.tolist()}  ->  B={pixel[0]}, G={pixel[1]}, R={pixel[2]}")
+
+# Dimensions
+height, width, channels = img.shape
+print(f"Height: {height} pixels, Width: {width} pixels, Channels: {channels}")
+print(f"Total pixels: {height * width:,}  |  Array elements: {img.size:,}")
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+---
+## Step 3: Drawing a Red Line on the Middle Row
+NumPy vectorized assignment `img_mod[mid_row, :] = [0, 0, 255]` writes the
+whole row at once — equivalent to, but $O(W)$-faster than, a per-column loop.
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+img_mod = img.copy()
+mid_row = height // 2
+img_mod[mid_row, :] = [0, 0, 255]  # BGR red
+
+show_images([
+    ("Original image", img),
+    (f"Modified (red line on row {mid_row})", img_mod),
+], cols=2)
+
+
+================================================================================
+CELL 10 | MARKDOWN
+================================================================================
+
+## Analysis & Key Takeaways
+- `cv2.imread` always returns **BGR**; convert before Matplotlib display or red/blue swap silently corrupts every visual.
+- `IMREAD_GRAYSCALE` and `cvtColor(..., BGR2GRAY)` agree bit-for-bit up to codec rounding — both encode the perceptual luminance formula $Y = 0.299R + 0.587G + 0.114B$.
+- Array indexing is `(y, x)` = `(row, column)`: `img[100, 150]` is *row 100, column 150*, not the reverse.
+- Vectorized row assignment outperforms an explicit pixel loop while staying exact.
+
+

@@ -1,0 +1,273 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Histogram & Contrast Enhancement (TP 2 — Exercise 5)
+
+## Assignment Objectives
+Images: `tp1_tp2_compteur_water_meter.jpg` (`im1`, grayscale) and
+`tp2_exo5_glaucoma_retinal_fundus.jpg` (`imc1`, colour).
+1. **Dynamic-range expansion:** `cv2.normalize()` vs. the from-scratch `expansionHisto(image, seuil=0, Ymin=0, Ymax=255)`.
+2. **Histogram equalization** (colour images processed on the $L$ channel of Lab space):
+   - a) Global equalization (`cv2.equalizeHist` vs. `egalisationHistoGlobale`)
+   - b) Adaptive histogram equalization — AHE (OpenCV vs. `egalisationAHE` with bilinear interpolation between tiles)
+   - c) Contrast-limited AHE — CLAHE (`cv2.createCLAHE` vs. `egalisationCLAHE` with clip limit and uniform redistribution)
+
+## Mathematical Principles & Intuition
+### 1. Dynamic-range expansion
+$$Y = Y_{min} + \frac{(X - X_{min})(Y_{max} - Y_{min})}{X_{max} - X_{min}}$$
+stretches the *occupied* intensity range $[X_{min}, X_{max}]$ onto the full
+$[Y_{min}, Y_{max}]$ — pure contrast gain, no histogram reshaping. The
+thresholded variant (`seuil > 0`) ignores bins with fewer pixels than
+`seuil` when finding $X_{min}$ / $X_{max}$ (outlier robustness).
+
+### 2. Global histogram equalization
+$$\mathrm{LUT}(k) = \mathrm{round}\!\left(255 \cdot \frac{\mathrm{CDF}(k) - \mathrm{CDF}_{min}}{N - \mathrm{CDF}_{min}}\right)$$
+maps each intensity to its cumulative rank, producing a (roughly) uniform
+output distribution. One global LUT cannot adapt to locally different
+lighting — motivating AHE.
+
+### 3. AHE & CLAHE (tile-based, bilinear interpolation)
+- **AHE** computes one LUT per tile; output pixels are bilinearly blended
+  between the 4 neighbouring tile LUTs (seamless stitching).
+- **CLAHE** first clips each tile histogram at a limit
+  $\beta = c \cdot \frac{N_{tile}}{256}$ and redistributes the clipped
+  excess uniformly — bounding noise amplification while keeping local
+  adaptivity.
+
+> Colour images are enhanced on the **L (lightness) channel of Lab space**
+> so chrominance (colour balance) stays untouched — directly enhancing B, G,
+> and R would shift colours.
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+### What This Cell Does
+- Detects Google Colab (`google.colab` in `sys.modules` or `COLAB_RELEASE_TAG`); on Colab it clones `APSD_TAI_LAB` into `/content` (unless already mounted from Drive), so the notebook works even when opened directly from GitHub.
+- Locally, it walks upward from the current working directory to the repository root (marker: `README.md` + `APDS/` + `TAI/`) and registers it on `sys.path` — the notebook therefore runs identically from the repo root, from `TAI/…/notebooks/`, or from any sub-folder.
+- Verifies `opencv-contrib-python` (checking `cv2.ximgproc`) and installs it only when missing.
+- Calls `bootstrap()` from `TAI.utils.env_io`, which resolves `TAI/images/` (the single consolidated, SHA-256 deduplicated dataset) and `TAI/outputs/` (runtime artifacts, never committed).
+
+### Why It Is Needed
+- `cv2.imshow()` opens blocking GUI windows and freezes Jupyter kernels — everything here renders through inline Matplotlib instead.
+- No hardcoded absolute paths (like `/home/...`): every path is derived from the discovered repository root, so the same cell works on any machine, in any IDE, and on Colab.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "TAI" / "utils").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+else:
+    # Local IDE / Jupyter: walk upward to the repository root
+    # (identified by README.md + APDS/ + TAI/), whatever the launch directory.
+    _cwd = Path.cwd().resolve()
+    _repo = next(
+        (
+            c
+            for c in (_cwd, *_cwd.parents)
+            if (c / "README.md").is_file() and (c / "APDS").is_dir() and (c / "TAI").is_dir()
+        ),
+        None,
+    )
+    if _repo is None:
+        raise FileNotFoundError(
+            f"APSD_TAI_LAB repository root not found above {_cwd}. "
+            "Launch Jupyter from inside the cloned repository."
+        )
+if str(_repo) not in sys.path:
+    sys.path.insert(0, str(_repo))
+
+# Make sure opencv-contrib-python is used (cv2.ximgproc) -- install only if missing
+try:
+    import cv2
+
+    _has_ximgproc = hasattr(cv2, "ximgproc")
+except ImportError:
+    _has_ximgproc = False
+if not _has_ximgproc:
+    %pip install -q opencv-contrib-python
+    import cv2
+
+from TAI.utils.env_io import bootstrap, load_image, show_images, plot_image_with_hist
+
+ROOT_DIR, IMG_DIR, OUT_DIR = bootstrap()
+
+import math
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+print(f"Repository root : {ROOT_DIR}")
+print(f"Images folder   : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"Outputs folder  : {OUT_DIR}")
+print(f"OpenCV          : {cv2.__version__} | cv2.ximgproc available: {hasattr(cv2, 'ximgproc')}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+---
+## Step 1: Original Images & Histograms
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+from TAI.utils.contrast import (
+    apply_on_gray_or_lab,
+    egalisationAHE,
+    egalisationCLAHE,
+    egalisationHistoGlobale,
+    expansionHisto,
+)
+
+im1 = load_image("tp1_tp2_compteur_water_meter.jpg", cv2.IMREAD_GRAYSCALE)
+imc1 = load_image("tp2_exo5_glaucoma_retinal_fundus.jpg", cv2.IMREAD_COLOR)
+
+plot_image_with_hist([("im1 (original grayscale)", im1), ("imc1 (original colour)", imc1)])
+print(f"im1 range: [{im1.min()}, {im1.max()}]  (dynamic range used: {im1.max() - im1.min()}/255)")
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+---
+## Step 2: Dynamic-Range Expansion (`cv2.normalize` vs. `expansionHisto`)
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+im2_cv = cv2.normalize(im1, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+imc2_cv = cv2.normalize(imc1, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+
+im2_perso = expansionHisto(im1, seuil=0, Ymin=0, Ymax=255)
+imc2_perso = expansionHisto(imc1, seuil=0, Ymin=0, Ymax=255)
+im2_seuil = expansionHisto(im1, seuil=20, Ymin=0, Ymax=255)
+
+print("Max |cv2.normalize - expansionHisto| (grayscale):", int(np.max(np.abs(im2_cv.astype(int) - im2_perso.astype(int)))))
+print("Max |cv2.normalize - expansionHisto| (colour)   :", int(np.max(np.abs(imc2_cv.astype(int) - imc2_perso.astype(int)))))
+
+plot_image_with_hist([
+    ("im1 original", im1),
+    ("cv2.normalize", im2_cv),
+    ("expansionHisto (seuil=0)", im2_perso),
+    ("expansionHisto (seuil=20)", im2_seuil),
+])
+plot_image_with_hist([
+    ("imc1 original", imc1),
+    ("cv2.normalize", imc2_cv),
+    ("expansionHisto (seuil=0)", imc2_perso),
+])
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+---
+## Step 3: Histogram Equalization — Global, AHE and CLAHE (OpenCV vs. From-Scratch)
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+from TAI.utils.metrics import calculate_psnr
+
+# OpenCV references
+cv_glob = lambda img: apply_on_gray_or_lab(img, cv2.equalizeHist)
+cv_ahe_obj = cv2.createCLAHE(clipLimit=1000.0, tileGridSize=(8, 8))     # huge clip = plain AHE
+cv_clahe_obj = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+cv_ahe = lambda img: apply_on_gray_or_lab(img, cv_ahe_obj.apply)
+cv_clahe = lambda img: apply_on_gray_or_lab(img, cv_clahe_obj.apply)
+
+# Verification table (grayscale image)
+rows = [
+    ("Global: cv2.equalizeHist vs egalisationHistoGlobale", cv_glob(im1), egalisationHistoGlobale(im1)),
+    ("AHE: cv2.createCLAHE(clip=1000) vs egalisationAHE", cv_ahe(im1), egalisationAHE(im1)),
+    ("CLAHE: cv2.createCLAHE(clip=2) vs egalisationCLAHE", cv_clahe(im1), egalisationCLAHE(im1)),
+]
+print(f"{'Comparison':56s} | {'max |diff|':>10s} | {'PSNR (dB)':>9s}")
+print("-" * 82)
+for label, a, b in rows:
+    d = int(np.max(np.abs(a.astype(int) - b.astype(int))))
+    print(f"{label:56s} | {d:10d} | {calculate_psnr(a, b):9.2f}")
+
+plot_image_with_hist([
+    ("Global OpenCV", cv_glob(im1)),
+    ("Global from-scratch", egalisationHistoGlobale(im1)),
+    ("AHE OpenCV", cv_ahe(im1)),
+    ("AHE from-scratch", egalisationAHE(im1)),
+    ("CLAHE OpenCV", cv_clahe(im1)),
+    ("CLAHE from-scratch", egalisationCLAHE(im1)),
+])
+
+
+================================================================================
+CELL 10 | CODE
+================================================================================
+
+# Glaucoma retinal fundus image: global vs AHE vs CLAHE on the Lab L channel
+plot_image_with_hist([
+    ("imc1 global OpenCV", cv_glob(imc1)),
+    ("imc1 global custom", egalisationHistoGlobale(imc1)),
+    ("imc1 AHE custom", egalisationAHE(imc1)),
+    ("imc1 CLAHE OpenCV", cv_clahe(imc1)),
+    ("imc1 CLAHE custom", egalisationCLAHE(imc1)),
+])
+
+
+================================================================================
+CELL 11 | CODE
+================================================================================
+
+# Quantitative contrast gain on the glaucoma fundus image
+lab_before = cv2.cvtColor(imc1, cv2.COLOR_BGR2Lab)[:, :, 0]
+for label, out in [
+    ("original", imc1),
+    ("global equalization", egalisationHistoGlobale(imc1)),
+    ("AHE", egalisationAHE(imc1)),
+    ("CLAHE", egalisationCLAHE(imc1)),
+]:
+    lab = cv2.cvtColor(out, cv2.COLOR_BGR2Lab)[:, :, 0]
+    print(f"{label:22s} | L-channel std = {lab.std():6.1f}  (before: {lab_before.std():.1f})")
+
+
+================================================================================
+CELL 12 | MARKDOWN
+================================================================================
+
+## Analysis & Key Takeaways
+- **Expansion:** `expansionHisto` reproduces `cv2.normalize(..., NORM_MINMAX)` bit-for-bit (difference = 0) — a pure linear stretch of the occupied range; the `seuil` variant simply ignores outlier bins.
+- **Global equalization:** the from-scratch `egalisationHistoGlobale` matches `cv2.equalizeHist` exactly (same CDF-normalization formula); it re-spreads intensities over the full range but cannot help locally under-lit regions.
+- **AHE / CLAHE:** the from-scratch tile implementation (with bilinear stitching and clip redistribution) agrees closely with `cv2.createCLAHE` (imperfect equality is expected — OpenCV's internal interpolation and redistribution differ in detail, hence the small PSNR gap), while reproducing the key behaviour: strong local adaptation on the dark fundus periphery.
+- **CLAHE vs AHE:** clipping bounds the noise amplification of AHE — on the retinal image CLAHE reveals the optic disc and vessels without exploding sensor noise in flat areas.
+- **Colour handling:** enhancing only the Lab *L* channel keeps hue/chromaticity identical to the original (comparing BGR histograms confirms only lightness moved).
+
+

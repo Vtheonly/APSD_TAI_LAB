@@ -1,0 +1,182 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 04 - Exercise 01: Multi-City Temperature Analysis with NumPy
+
+Analyses a 7-day temperature dataset across three Algerian cities (Alger,
+Annaba, Oran) using multi-axis aggregations, coordinate extractions, and
+boolean masking.
+
+
+================================================================================
+CELL 2 | MARKDOWN
+================================================================================
+
+---
+## Step 0: Portable Environment Bootstrap (Local IDE / Jupyter + Google Colab)
+
+Locates the `APDS/05_NumPy_Scientific_Computing/` project folder (anchored on its own notebook path) by walking upward from the
+current working directory — so the notebook runs identically from the repository
+root, the project folder or its `notebooks/` sub-folder. On Google Colab the
+repository is cloned into `/content/APSD_TAI_LAB` automatically (opening the
+notebook directly from GitHub also works). The resolved project folder is added
+to `sys.path` so its local modules (e.g. `utils`, `students`) import cleanly.
+
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_NAME = "05_NumPy_Scientific_Computing"
+ANCHOR_REL = "notebooks/01_temperature_analysis.ipynb"  # file that uniquely identifies the project folder
+REPO_URL = "https://github.com/Vtheonly/APSD_TAI_LAB.git"
+IN_COLAB = "google.colab" in sys.modules or "COLAB_RELEASE_TAG" in os.environ
+
+if IN_COLAB:
+    # Google Colab: clone the repository (unless already present, e.g. on Drive)
+    _repo = Path("/content/APSD_TAI_LAB")
+    if not (_repo / "APDS").is_dir():
+        subprocess.run(
+            ["git", "clone", "--depth", "1", REPO_URL, str(_repo)], check=True
+        )
+    PROJ_DIR = _repo / "APDS" / PROJECT_NAME
+else:
+    # Local IDE / Jupyter: find the project folder by walking upward from the
+    # working directory (works from the repo root, the project folder or its
+    # notebooks/ sub-folder, regardless of where Jupyter was launched).
+    _cwd = Path.cwd().resolve()
+    PROJ_DIR = next(
+        (
+            c / "APDS" / PROJECT_NAME
+            for c in (_cwd, *_cwd.parents)
+            if (c / "APDS" / PROJECT_NAME / ANCHOR_REL).exists()
+        ),
+        None,
+    )
+    if PROJ_DIR is None:
+        raise FileNotFoundError(
+            f"Project folder APDS/{PROJECT_NAME} (anchor: {ANCHOR_REL}) not found "
+            f"above {_cwd}. Launch Jupyter from inside the cloned repository."
+        )
+if str(PROJ_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJ_DIR))
+
+print(f"Project folder : {PROJ_DIR}")
+print(f"Google Colab   : {IN_COLAB}")
+
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+### 1. Create the Temperature Matrix T (7 days x 3 cities)
+
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+import numpy as np
+
+T = np.array([
+    [22, 25, 20],
+    [24, 27, 21],
+    [19, 20, 22],
+    [25, 29, 28],
+    [26, 30, 27],
+    [21, 21, 23],
+    [20, 26, 25],
+])
+
+cities = ["Alger", "Annaba", "Oran"]
+days = [f"Day {i}" for i in range(1, 8)]
+display(T)
+
+
+================================================================================
+CELL 6 | MARKDOWN
+================================================================================
+
+### 2. Maximum Calculations (City, Daily, Overall)
+
+
+================================================================================
+CELL 7 | CODE
+================================================================================
+
+max_per_city = T.max(axis=0)
+max_per_day = T.max(axis=1)
+overall_max = T.max()
+
+print("Maximum per City:")
+for c, m in zip(cities, max_per_city):
+    print(f"  {c}: {m} C")
+
+print("\nMaximum per Day:")
+for d, m in zip(days, max_per_day):
+    print(f"  {d}: {m} C")
+
+print(f"\nOverall Peak: {overall_max} C")
+
+
+================================================================================
+CELL 8 | MARKDOWN
+================================================================================
+
+### 3. Coordinate Lookup for the Overall Maximum
+
+
+================================================================================
+CELL 9 | CODE
+================================================================================
+
+flat_idx = T.argmax()
+r_idx, c_idx = np.unravel_index(flat_idx, T.shape)
+print(f"Peak recorded on {days[r_idx]} in {cities[c_idx]} ({overall_max} C).")
+
+
+================================================================================
+CELL 10 | MARKDOWN
+================================================================================
+
+### 4. City Comparisons and Appending Averages
+
+
+================================================================================
+CELL 11 | CODE
+================================================================================
+
+# Higher temperature between Alger (col 0) and Oran (col 2)
+alger_vs_oran = np.maximum(T[:, 0], T[:, 2])
+
+# Append city averages to the array
+city_averages = T.mean(axis=0).reshape(1, 3)
+T_extended = np.vstack([T, city_averages])
+print("Matrix with Appended City Means (Row 8):")
+print(np.round(T_extended, 2))
+
+
+================================================================================
+CELL 12 | MARKDOWN
+================================================================================
+
+### 5. Boolean Mask: Days Annaba was Hottest
+
+
+================================================================================
+CELL 13 | CODE
+================================================================================
+
+annaba_hottest_mask = (T[:, 1] > T[:, 0]) & (T[:, 1] > T[:, 2])
+print("Days when Annaba was strictly hottest:")
+for idx, is_hot in enumerate(annaba_hottest_mask):
+    if is_hot:
+        print(f"  {days[idx]} (Annaba: {T[idx, 1]} C)")
+
+
