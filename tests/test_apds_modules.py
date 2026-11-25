@@ -182,6 +182,58 @@ class TestStreaming:
         assert count == 2
 
 
+class TestProductStreaming:
+    """Tutorial 03 v2 - Exercise 6: one-million-products streaming."""
+
+    def _write(self, tmp_path):
+        fp = tmp_path / "products.csv"
+        fp.write_text(
+            "Name,Price,Quantity\n"
+            "Laptop,1000,3\n"
+            "Phone,500,5\n"
+            '"Corrupted Row",InvalidPrice,10\n'
+            "Tablet,700,2\n"
+        )
+        return fp
+
+    def test_generate_large_products_csv(self, tmp_path):
+        fp = tmp_path / "p.csv"
+        stream_mod.generate_large_products_csv(str(fp), total_rows=4)
+        lines = fp.read_text().splitlines()
+        assert lines[0] == "Name,Price,Quantity"
+        assert len(lines) == 5  # header + 4 rows
+        assert lines[1] == "Laptop,100,1"
+        assert lines[2] == "Phone,125,2"
+        assert lines[4] == "Monitor,175,4"
+
+    def test_generate_products_skips_existing(self, tmp_path, capsys):
+        fp = tmp_path / "exists.csv"
+        fp.write_text("already here\n")
+        stream_mod.generate_large_products_csv(str(fp), total_rows=5)
+        assert fp.read_text() == "already here\n"
+        assert "already exists" in capsys.readouterr().out
+
+    def test_stream_products_yields_tuples(self, tmp_path):
+        rows = list(stream_mod.stream_products(str(self._write(tmp_path))))
+        # the malformed row is skipped, valid rows become Product-semantics tuples
+        assert rows == [("Laptop", 1000.0, 3), ("Phone", 500.0, 5), ("Tablet", 700.0, 2)]
+
+    def test_stream_products_is_lazy(self, tmp_path):
+        gen = stream_mod.stream_products(str(self._write(tmp_path)))
+        assert not isinstance(gen, list)
+
+    def test_total_inventory_value(self, tmp_path):
+        # Laptop 1000*3 + Phone 500*5 + Tablet 700*2 = 3000 + 2500 + 1400
+        assert stream_mod.total_inventory_value(str(self._write(tmp_path))) == 6900.0
+
+    def test_product_semantics_match_apds02(self, tmp_path):
+        # The streamed tuples carry the same fields as APDS/02's Product
+        name, price, quantity = next(iter(stream_mod.stream_products(str(self._write(tmp_path)))))
+        p = product_mod.Product(name, price, quantity)
+        assert p.name == "Laptop" and p.total_value() == 3000.0
+        assert "Laptop" in str(p)
+
+
 # ---------------------------------------------------------------------------
 # 07_Monthly_Sales_Forecasting
 # ---------------------------------------------------------------------------

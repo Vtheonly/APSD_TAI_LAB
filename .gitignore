@@ -62,4 +62,5 @@ TAI/outputs/*
 
 # --- APDS generated data / benchmark artifacts --------------------------
 APDS/04_One_Million_Record_Streaming/large_patients.csv
+APDS/04_One_Million_Record_Streaming/large_products.csv
 APDS/07_Monthly_Sales_Forecasting/data/

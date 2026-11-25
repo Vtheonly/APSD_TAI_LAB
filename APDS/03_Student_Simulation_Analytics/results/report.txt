@@ -4,9 +4,9 @@
 Mean           : 9.69
 Median         : 8.6
 Stdev          : 3.41
-Min_average    : 5.64
-Max_average    : 15.3
-Mean_age       : 23.1
+Min average    : 5.64
+Max average    : 15.3
+Mean age       : 23.1
 ----------------------------------------------
 STU_001 | Age: 20 | Avg: 15.3
 STU_002 | Age: 22 | Avg: 8.97
