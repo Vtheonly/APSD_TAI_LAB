@@ -73,11 +73,51 @@ baseline hygiene failures. No curriculum content edits.
 - #26–#29 vault 09.x sync · #30–#33 .5 exam prep · #34 Libraries/22 SSIM
 - #35 roadmap unification
 
+## Session 2 — COMPLETE (issues #22, #5, #34: first fixes on BOTH repos)
+
+**Completed work** (lab commit `388228e` + `01ac8d6`; vault commit `66098db`;
+issues #22/#5/#34 closed with evidence comments):
+1. **#22 — 4 TAI notebook bugs fixed** (lab): `dt_cv` now times
+   `cv2.calcHist` (was a second Python-loop run); σ²=900 PSNR 15.6 → 18.59 dB
+   (+ Gaussian formula note); SAT formula corrected to
+   `SAT(b,r) - SAT(t,r) - SAT(b,l) + SAT(t,l)` (matches
+   `filtreMoyenne_integrale`); misaligned crop/resize/rotate PSNR table in
+   `03_geometric_and_draw_ops` replaced with valid checks (exact crop equality,
+   lossless `rot90` — verified `cv2.ROTATE_90_CLOCKWISE == np.rot90(k=-1)` —
+   im2 shape/aspect/DC conservation, aligned blur PSNR).
+2. **#5 — APDS/01 TP2 gaps** (lab): new `plt.plot(df["Age"], df["Cholesterol"],
+   marker="o")` cell (TP2 p. 2); README TP2 Steps 4–5 (git workflow +
+   `pip freeze > requirements.txt`).
+3. **#34 — Libraries/22 SSIM** (vault): `calculate_ssim_windowed` (global SSIM,
+   misleading name) replaced by the canonical `calculate_ssim` — byte-identical
+   to `TAI/utils/metrics.py` (11x11 Gaussian σ=1.5, Wang 2004, channel-wise,
+   `data_range`); `calculate_psnr` `max_val`→`data_range`; windowing theory +
+   global-shortcut warning added; cross-links to the canonical module.
+
+**Validation:** `pytest -q` 176 passed · `execute_notebooks.py` 22/22, 0 cell
+errors (run twice: after #22, and after #5's new cell) · `verify_repo.py` PASS ·
+`pip check` clean · vault wikilinks 0 broken (1017 links) · Libraries/22 code
+block extracted & executed, outputs equal `TAI/utils/metrics.py` exactly.
+
+**New verified facts:**
+- Notebooks are committed **output-free** (repo convention enforced by
+  `test_notebooks_have_no_stale_outputs`); `execute_notebooks.py` executes to
+  a temp dir and never writes back — edit sources only, keep outputs `[]`.
+- APDS course/TP PDFs are **not in either repo**; the Phase-1 audit article
+  (user-provided) is the working spec for APDS-side content. TAI side has the
+  real PDFs in `TAI/docs/` — always prefer them.
+- Working fix scripts live outside the repo, next to the clones (NOT committed —
+  keeps `scripts/` free of one-off code; only durable tooling like
+  `check_wikilinks.py` is committed).
+- Post-issue comments via a small Python script (shell heredoc + JSON quoting
+  mangles bodies; see `scripts/comment_issues_22_5.py` pattern).
+
 ## Remaining / blocked
-- Nothing blocked. All 34 content issues (#2–#35) are ready to execute in the
-  order below. Network-dependent steps (e.g. `sns.load_dataset('titanic'/'iris'`
-  in issues #18/#19) should be attempted and, if offline, documented with a
-  local-data fallback per issue text.
+- 31 issues open (#2–#21, #23–#33, #35). Nothing blocked.
+- Reminder for content sessions: the APDS-side issues rely on the article's
+  transcription of the PDFs; keep implementations strictly within what the
+  article + PDF-derived details state, and record any ambiguity as an issue
+  comment rather than guessing.
 
 ## Next session
 
@@ -87,18 +127,21 @@ Continuation prompt (paste as-is):
 
 > You are continuing the APSD_TAI_LAB / Obsidian-vault curriculum work. Read
 > `AGENT.md` and `HANDOFF.md` in the APSD_TAI_LAB clone, then execute GitHub
-> issue #2 (create `APDS/00_Introduction_Exercises` implementing
+> issue #2 (create `APDS/00_Introduction_Exercises` implementing the
 > `TP1_Chapter_Introduction` Exercises 1–2: README + notebook with the standard
-> Step-0 bootstrap cell; update `APDS/README.md`). Source of truth: the TP1 PDF
-> (Chapter 1 introduction course context) — do not invent scenarios beyond the
-> five named domains. Validate with `python -m pytest -q` (100% pass),
-> `MPLBACKEND=Agg python scripts/execute_notebooks.py` (23/23 notebooks),
-> `python scripts/verify_repo.py` (PASS). Then close issue #2 via the GitHub
-> REST API with a summary of changed files and test results, update
-> `HANDOFF.md` (session record + next issue), commit and push, and stop.
-> If #2 is already done, take the next open issue in numeric order.
+> Step-0 bootstrap cell; update `APDS/README.md`). Working spec: the Phase-1
+> audit article (the APDS PDFs are not in the repo) — implement only what it
+> specifies, and note the source in the README. Validate with
+> `python -m pytest -q` (100% pass), `MPLBACKEND=Agg python
+> scripts/execute_notebooks.py` (23/23 notebooks — extend the test/scripts
+> expectations if they enumerate APDS folders), `python scripts/verify_repo.py`
+> (PASS). Then close issue #2 via the GitHub REST API with a summary of changed
+> files and test results, update `HANDOFF.md` (session record + next issue),
+> commit and push, and stop. If #2 is already done, take the next open issue in
+> numeric order.
 
-Recommended ordering after #2: #5 → #4 → #3 (Stage 1 batch), then #22 (small,
-high-value TAI bug fixes), then Stage 2 batch (#6, #7, #8), etc. Prefer
-finishing a stage's APDS+vault issues together so cross-references land in one
-push.
+Recommended ordering after #2: #4 → #3 (finish the Stage-1 vault batch —
+they cross-link to the now-landed APDS/01 TP2 Steps 4–5), then Stage 2 batch
+(#6, #7, #8), then #13–#19 Stage 4 APDS labs. Prefer finishing a stage's
+APDS+vault issues together so cross-references land in one push.
+
