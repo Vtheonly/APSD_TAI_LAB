@@ -1,37 +1,62 @@
-# Python
+# =====================================================================
+# Unified .gitignore for the whole APSD_TAI_LAB repository
+# (covers both APDS/ and TAI/ coursework tracks).
+# =====================================================================
+
+# --- Python bytecode & packaging ------------------------------------
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
 build/
 dist/
+.eggs/
+
+# --- Test & lint caches ----------------------------------------------
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage.xml
 htmlcov/
+.hypothesis/
 
-# Virtual environments
+# --- Virtual environments --------------------------------------------
 .venv/
 venv/
 env/
+ENV/
 
-# IDEs
+# --- IDE folders ------------------------------------------------------
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# Jupyter
+# --- Jupyter ----------------------------------------------------------
 .ipynb_checkpoints/
+.jupyter/
+*.ipynb_meta
 
-# Environment variables and secrets
+# --- Environment variables & secrets ----------------------------------
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 
-# Logs
+# --- Logs --------------------------------------------------------------
 *.log
 
-# OS files
+# --- OS files -----------------------------------------------------------
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# --- TAI runtime generated outputs -------------------------------------
+# (Notebooks write their generated images here; they are never committed.)
+TAI/outputs/
+
+# --- APDS generated data / benchmark artifacts --------------------------
+APDS/04_One_Million_Record_Streaming/large_patients.csv
+APDS/07_Monthly_Sales_Forecasting/data/

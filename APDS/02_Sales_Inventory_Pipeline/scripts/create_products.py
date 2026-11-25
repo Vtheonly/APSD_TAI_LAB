@@ -1,12 +1,20 @@
-import os
 import sys
+from pathlib import Path
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Make the project's `utils` package importable no matter where the script is
+# launched from (repo root, project folder, or elsewhere).
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
 from utils import clean_lines, parse_products, Product
 
+
 def main():
-    raw_path = os.path.join("data", "raw", "data.txt")
-    if not os.path.exists(raw_path):
+    # Resolve the raw data path from the project directory (not the CWD), so
+    # the script works from the repository root or any other directory.
+    raw_path = PROJECT_DIR / "data" / "raw" / "data.txt"
+    if not raw_path.exists():
         print(f"[Error] Target data not found: {raw_path}")
         sys.exit(1)
 
@@ -29,6 +37,7 @@ def main():
 
     print("---------------------------")
     print(f"Total Sales: {total_revenue:.1f}")
+
 
 if __name__ == "__main__":
     main()

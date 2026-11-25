@@ -1,6 +1,37 @@
-numpy
-pandas
-matplotlib
-seaborn
-scikit-learn
-jupyter
+# Unified dependencies for BOTH coursework tracks (APDS/ and TAI/).
+# Install with:  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+#
+# NOTE: opencv-contrib-python (NOT bare opencv-python) is required so that
+# cv2.ximgproc (e.g. cv2.ximgproc.thinning for Zhang-Suen skeletonization) works.
+# Constraints use inclusive lower bounds only, so the same file installs cleanly
+# on Linux, macOS, Windows and Google Colab without pinning transient
+# sub-dependencies.
+
+# --- Scientific computing ---------------------------------------------------
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.3
+scikit-image>=0.22
+
+# --- Imaging ----------------------------------------------------------------
+opencv-contrib-python>=4.9
+pillow>=10.0
+
+# --- Plotting ---------------------------------------------------------------
+matplotlib>=3.8
+seaborn>=0.13
+
+# --- Notebooks / Jupyter ecosystem ------------------------------------------
+jupyter>=1.0
+jupyterlab>=4.0
+notebook>=7.0
+ipykernel>=6.29
+nbformat>=5.9
+nbconvert>=7.16
+
+# --- Spreadsheets -----------------------------------------------------------
+openpyxl>=3.1
+
+# --- Testing ----------------------------------------------------------------
+pytest>=8.0
