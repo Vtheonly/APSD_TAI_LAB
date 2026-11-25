@@ -1,0 +1,15 @@
+# Core Computer Vision & Numerical Computing
+numpy>=1.26.0
+opencv-contrib-python>=4.10.0
+matplotlib>=3.8.0
+
+# Jupyter Ecosystem (Notebooks + Headless Execution)
+jupyterlab>=4.0.0
+notebook>=7.0.0
+ipykernel>=6.29.0
+nbconvert>=7.16.0
+
+# Scientific Extensions (checked in TP1_Exo1 & useful for analysis)
+scipy>=1.11.0
+scikit-image>=0.22.0
+pandas>=2.1.0
