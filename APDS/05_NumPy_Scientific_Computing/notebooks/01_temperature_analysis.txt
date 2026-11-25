@@ -1,0 +1,111 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 04 - Exercise 01: Multi-City Temperature Analysis with NumPy
+Analyzes a 7-day temperature dataset across three Algerian cities (Alger, Annaba, Oran) using multi-axis aggregations, coordinate extractions, and boolean masking.
+
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+import numpy as np
+
+# 1. Create temperature matrix T (7 days x 3 cities)
+T = np.array([
+    [22, 25, 20],
+    [24, 27, 21],
+    [19, 20, 22],
+    [25, 29, 28],
+    [26, 30, 27],
+    [21, 21, 23],
+    [20, 26, 25]
+])
+
+cities = ["Alger", "Annaba", "Oran"]
+days = [f"Day {i}" for i in range(1, 8)]
+display(T)
+
+
+================================================================================
+CELL 3 | MARKDOWN
+================================================================================
+
+### 2. Maximum Calculations (City, Daily, Overall)
+
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+max_per_city = T.max(axis=0)
+max_per_day = T.max(axis=1)
+overall_max = T.max()
+
+print("Maximum per City:")
+for c, m in zip(cities, max_per_city):
+    print(f"  {c}: {m}°C")
+
+print("\nMaximum per Day:")
+for d, m in zip(days, max_per_day):
+    print(f"  {d}: {m}°C")
+
+print(f"\nOverall Peak: {overall_max}°C")
+
+
+================================================================================
+CELL 5 | MARKDOWN
+================================================================================
+
+### 3. Coordinate Lookup for Overall Maximum
+
+
+================================================================================
+CELL 6 | CODE
+================================================================================
+
+flat_idx = T.argmax()
+r_idx, c_idx = np.unravel_index(flat_idx, T.shape)
+print(f"Peak recorded on {days[r_idx]} in {cities[c_idx]} ({overall_max}°C).")
+
+
+================================================================================
+CELL 7 | MARKDOWN
+================================================================================
+
+### 4. City Comparisons and Appending Averages
+
+
+================================================================================
+CELL 8 | CODE
+================================================================================
+
+# Higher temperature between Alger (col 0) and Oran (col 2)
+alger_vs_oran = np.maximum(T[:, 0], T[:, 2])
+
+# Append city averages to the array
+city_averages = T.mean(axis=0).reshape(1, 3)
+T_extended = np.vstack([T, city_averages])
+print("Matrix with Appended City Means (Row 8):")
+print(np.round(T_extended, 2))
+
+
+================================================================================
+CELL 9 | MARKDOWN
+================================================================================
+
+### 5. Boolean Mask: Days Annaba was Hottest
+
+
+================================================================================
+CELL 10 | CODE
+================================================================================
+
+annaba_hottest_mask = (T[:, 1] > T[:, 0]) & (T[:, 1] > T[:, 2])
+print("Days when Annaba was strictly hottest:")
+for idx, is_hot in enumerate(annaba_hottest_mask):
+    if is_hot:
+        print(f"  {days[idx]} (Annaba: {T[idx, 1]}°C)")
+
+

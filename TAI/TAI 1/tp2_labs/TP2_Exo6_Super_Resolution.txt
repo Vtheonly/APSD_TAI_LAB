@@ -1,0 +1,473 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# TP 2 — Exercice 6 : Super-résolution des images et Contours Pochoirs (Getreuer, 2009)
+
+1. Chargement du dataset `Images_TP2_EXO6_SR` (23 images : `HR_GT_512x512`, `LR_256x256`, `LR_128x128`) depuis `tp1_tp2_images/` ou repli automatique sur un jeu de test local généré à partir de `tp1_tp2_images/` si l'archive externe n'a pas encore été téléchargée.
+2. Évaluation PSNR et SSIM des interpolations OpenCV (`INTER_NEAREST`, `INTER_LINEAR`, `INTER_CUBIC`) en $2\times$, $4\times$ direct et double $2\times$ ($2\times \to 2\times$).
+3. Implémentation personnelle de l'interpolation bilinéaire $2\times$ (`super_resolution_bilineaire_2x`) et comparaison avec OpenCV.
+4. Implémentation complète de l'interpolation adaptative par **Contours Pochoirs** (*Contour Stencils*, Getreuer 2009) : calcul de variation totale sur les 12 stencils, norme vectorielle $\ell_1$ en $YC_bC_r$ pour les images couleur, filtrage spatial $G_\rho$, règles d'interpolation par cellule et moyennage des points milieux partagés.
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+from pathlib import Path
+import math
+import time
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+def find_project_root():
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, cwd.parent, cwd.parent.parent):
+        if (candidate / "tp1_tp2_images").is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "Impossible de trouver le dossier 'tp1_tp2_images'. "
+        "Lancez Jupyter depuis la racine TAI ou depuis tp1_labs / tp2_labs."
+    )
+
+ROOT_DIR = find_project_root()
+IMG_DIR = ROOT_DIR / "tp1_tp2_images"
+OUT_DIR = ROOT_DIR / "tp2_labs" / "outputs"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_image(filename, flags=cv2.IMREAD_COLOR):
+    path = IMG_DIR / filename
+    img = cv2.imread(str(path), flags)
+    if img is None:
+        raise FileNotFoundError(f"Image introuvable ou illisible: {path}")
+    return img
+
+def show_images(items, cols=3, figsize_per_cell=(5, 4)):
+    n = len(items)
+    rows = math.ceil(n / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * figsize_per_cell[0], rows * figsize_per_cell[1]))
+    axes = np.atleast_1d(axes).ravel()
+    for ax in axes[n:]:
+        ax.axis("off")
+    for ax, (title, img) in zip(axes, items):
+        if img.ndim == 2:
+            ax.imshow(img, cmap="gray", vmin=0, vmax=255)
+        elif img.shape[2] == 3:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        elif img.shape[2] == 4:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA))
+        ax.set_title(title, fontsize=10)
+        ax.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+print(f"ROOT_DIR : {ROOT_DIR}")
+print(f"IMG_DIR  : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"OUT_DIR  : {OUT_DIR}")
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+# 1) Découverte du dataset SR (consolidé, sous-dossier ou génération locale de démonstration)
+def discover_sr_dataset():
+    # Cas A : images déjà consolidées dans tp1_tp2_images/
+    hr_files = sorted(IMG_DIR.glob("tp2_exo6_sr_hr_gt_512x512_*"))
+    lr256_files = sorted(IMG_DIR.glob("tp2_exo6_sr_lr_256x256_*"))
+    lr128_files = sorted(IMG_DIR.glob("tp2_exo6_sr_lr_128x128_*"))
+    if hr_files and len(hr_files) == len(lr256_files) == len(lr128_files):
+        return "Dataset consolidé tp1_tp2_images", list(zip(hr_files, lr256_files, lr128_files))
+
+    # Cas B : dossier Images_TP2_EXO6_SR extrait dans tp1_tp2_images/ ou à la racine
+    for base in (IMG_DIR / "Images_TP2_EXO6_SR", ROOT_DIR / "Images_TP2_EXO6_SR", ROOT_DIR / "Images" / "Images_TP2_EXO6_SR"):
+        hr_dir, lr2_dir, lr4_dir = base / "HR_GT_512x512", base / "LR_256x256", base / "LR_128x128"
+        if hr_dir.is_dir() and lr2_dir.is_dir() and lr4_dir.is_dir():
+            triplets = []
+            for i in range(1, 24):
+                hr_match = list(hr_dir.glob(f"HR_GT_{i}.*"))
+                l2_match = list(lr2_dir.glob(f"LR_256_{i}.*"))
+                l4_match = list(lr4_dir.glob(f"LR_128_{i}.*"))
+                if hr_match and l2_match and l4_match:
+                    triplets.append((hr_match[0], l2_match[0], l4_match[0]))
+            if triplets:
+                return f"Dataset officiel ({base})", triplets
+
+    # Cas C : jeu de démonstration généré localement si Images_TP2_EXO6_SR absent
+    demo_dir = OUT_DIR / "exo6_demo_dataset"
+    for sub in ("HR_GT_512x512", "LR_256x256", "LR_128x128"):
+        (demo_dir / sub).mkdir(parents=True, exist_ok=True)
+    seed_imgs = [
+        "tp1_tp2_compteur_water_meter.jpg",
+        "tp1_tp2_cameraman_gray.bmp",
+        "tp1_exo4_exo5_peppers_color.bmp",
+        "tp1_tp2_sample_barbara_portrait.bmp",
+        "tp1_tp2_sample_houses_street.bmp",
+    ]
+    triplets = []
+    for idx, fname in enumerate(seed_imgs, start=1):
+        src = cv2.imread(str(IMG_DIR / fname), cv2.IMREAD_COLOR)
+        if src is None:
+            continue
+        hr = cv2.resize(src, (512, 512), interpolation=cv2.INTER_CUBIC)
+        l2 = cv2.resize(hr, (256, 256), interpolation=cv2.INTER_AREA)
+        l4 = cv2.resize(hr, (128, 128), interpolation=cv2.INTER_AREA)
+        p_hr = demo_dir / "HR_GT_512x512" / f"HR_GT_{idx}.png"
+        p_l2 = demo_dir / "LR_256x256" / f"LR_256_{idx}.png"
+        p_l4 = demo_dir / "LR_128x128" / f"LR_128_{idx}.png"
+        cv2.imwrite(str(p_hr), hr)
+        cv2.imwrite(str(p_l2), l2)
+        cv2.imwrite(str(p_l4), l4)
+        triplets.append((p_hr, p_l2, p_l4))
+    return "Jeu synthétique de démonstration (Images_TP2_EXO6_SR absent)", triplets
+
+dataset_label, sr_triplets = discover_sr_dataset()
+print(f"Source utilisée : {dataset_label} ({len(sr_triplets)} triplets d'images)")
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+# Métriques PSNR et SSIM (Wang et al. 2004, sans dépendance externe)
+def calculate_psnr(hr_gt, hr_pred):
+    mse = np.mean((hr_gt.astype(np.float64) - hr_pred.astype(np.float64)) ** 2)
+    return 100.0 if mse == 0 else 10.0 * math.log10((255.0 ** 2) / mse)
+
+def calculate_ssim(img1, img2):
+    a = img1.astype(np.float64)
+    b = img2.astype(np.float64)
+    if a.ndim == 3:
+        return float(np.mean([calculate_ssim(a[:, :, c], b[:, :, c]) for c in range(a.shape[2])]))
+    c1 = (0.01 * 255) ** 2
+    c2 = (0.03 * 255) ** 2
+    mu1 = cv2.GaussianBlur(a, (11, 11), 1.5)
+    mu2 = cv2.GaussianBlur(b, (11, 11), 1.5)
+    mu1_sq, mu2_sq, mu1_mu2 = mu1 * mu1, mu2 * mu2, mu1 * mu2
+    s1_sq = cv2.GaussianBlur(a * a, (11, 11), 1.5) - mu1_sq
+    s2_sq = cv2.GaussianBlur(b * b, (11, 11), 1.5) - mu2_sq
+    s12 = cv2.GaussianBlur(a * b, (11, 11), 1.5) - mu1_mu2
+    num = (2.0 * mu1_mu2 + c1) * (2.0 * s12 + c2)
+    den = (mu1_sq + mu2_sq + c1) * (s1_sq + s2_sq + c2)
+    return float(np.mean(num / den))
+
+# 2) Benchmark OpenCV : 2x (256->512), 4x direct (128->512), double 2x (128->256->512)
+interp_methods = [
+    ("Plus proche voisin", cv2.INTER_NEAREST),
+    ("Bilinéaire", cv2.INTER_LINEAR),
+    ("Bicubique", cv2.INTER_CUBIC),
+]
+
+summary = {}
+for m_name, m_flag in interp_methods:
+    for mode in ("2x (256->512)", "4x direct (128->512)", "Double 2x (128->256->512)"):
+        summary[(m_name, mode)] = {"psnr": [], "ssim": []}
+
+for p_hr, p_l2, p_l4 in sr_triplets:
+    hr = cv2.imread(str(p_hr), cv2.IMREAD_COLOR)
+    l2 = cv2.imread(str(p_l2), cv2.IMREAD_COLOR)
+    l4 = cv2.imread(str(p_l4), cv2.IMREAD_COLOR)
+    h_hr, w_hr = hr.shape[:2]
+
+    for m_name, m_flag in interp_methods:
+        pred_2x = cv2.resize(l2, (w_hr, h_hr), interpolation=m_flag)
+        pred_4x = cv2.resize(l4, (w_hr, h_hr), interpolation=m_flag)
+        mid_2x = cv2.resize(l4, (l2.shape[1], l2.shape[0]), interpolation=m_flag)
+        pred_2x2x = cv2.resize(mid_2x, (w_hr, h_hr), interpolation=m_flag)
+
+        for mode, pred in [("2x (256->512)", pred_2x), ("4x direct (128->512)", pred_4x), ("Double 2x (128->256->512)", pred_2x2x)]:
+            summary[(m_name, mode)]["psnr"].append(calculate_psnr(hr, pred))
+            summary[(m_name, mode)]["ssim"].append(calculate_ssim(hr, pred))
+
+print(f"{'Méthode':20s} | {'Échelle':25s} | {'PSNR moyen':>12s} | {'SSIM moyen':>12s}")
+print("-" * 78)
+for (m_name, mode), vals in summary.items():
+    print(f"{m_name:20s} | {mode:25s} | {np.mean(vals['psnr']):10.3f} dB | {np.mean(vals['ssim']):12.4f}")
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+# 3) Fonction personnelle d'interpolation bilinéaire 2x
+def super_resolution_bilineaire_2x(image, opencv_align=True):
+    img = image.astype(np.float64)
+    h, w = img.shape[:2]
+    out_h, out_w = 2 * h, 2 * w
+
+    if opencv_align:
+        # Alignement exact sur les centres de pixels OpenCV: (i + 0.5)/2 - 0.5
+        ys = np.clip((np.arange(out_h, dtype=np.float64) + 0.5) / 2.0 - 0.5, 0.0, h - 1.0)
+        xs = np.clip((np.arange(out_w, dtype=np.float64) + 0.5) / 2.0 - 0.5, 0.0, w - 1.0)
+    else:
+        ys = np.clip(np.arange(out_h, dtype=np.float64) / 2.0, 0.0, h - 1.0)
+        xs = np.clip(np.arange(out_w, dtype=np.float64) / 2.0, 0.0, w - 1.0)
+
+    y0 = np.floor(ys).astype(np.int64)
+    x0 = np.floor(xs).astype(np.int64)
+    y1 = np.minimum(y0 + 1, h - 1)
+    x1 = np.minimum(x0 + 1, w - 1)
+    wy = (ys - y0)[:, None]
+    wx = (xs - x0)[None, :]
+
+    if img.ndim == 3:
+        wy = wy[:, :, None]
+        wx = wx[:, :, None]
+
+    v00 = img[y0[:, None], x0[None, :]]
+    v01 = img[y0[:, None], x1[None, :]]
+    v10 = img[y1[:, None], x0[None, :]]
+    v11 = img[y1[:, None], x1[None, :]]
+
+    out = (
+        (1.0 - wy) * (1.0 - wx) * v00
+        + (1.0 - wy) * wx * v01
+        + wy * (1.0 - wx) * v10
+        + wy * wx * v11
+    )
+    return np.clip(np.round(out), 0, 255).astype(np.uint8)
+
+# Comparaison Bilinéaire Perso vs OpenCV INTER_LINEAR
+psnr_cv_list, psnr_perso_list, max_diffs = [], [], []
+for p_hr, p_l2, _ in sr_triplets:
+    hr = cv2.imread(str(p_hr), cv2.IMREAD_COLOR)
+    l2 = cv2.imread(str(p_l2), cv2.IMREAD_COLOR)
+    b_cv = cv2.resize(l2, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_LINEAR)
+    b_perso = super_resolution_bilineaire_2x(l2, opencv_align=True)
+    psnr_cv_list.append(calculate_psnr(hr, b_cv))
+    psnr_perso_list.append(calculate_psnr(hr, b_perso))
+    max_diffs.append(int(np.max(np.abs(b_cv.astype(np.int16) - b_perso.astype(np.int16)))))
+
+print(f"Bilinéaire 2x OpenCV PSNR moyen : {np.mean(psnr_cv_list):.4f} dB")
+print(f"Bilinéaire 2x Perso  PSNR moyen : {np.mean(psnr_perso_list):.4f} dB")
+print(f"Écart maximal pixel entre OpenCV et Perso : {max(max_diffs)} niveau(x) (arrondi)")
+
+================================================================================
+CELL 6 | CODE
+================================================================================
+
+# 4) Interpolation adaptative par Contours Pochoirs (Getreuer, 2009)
+def super_resolution_contour_stencils_2x(image, rho=0.5):
+    '''
+    Implémentation vectorisée de Contour Stencil Interpolation (Getreuer, SPIE 2009) :
+    - 12 stencils orientés avec poids entiers normalisés par |S|
+    - Norme l1 en YCrCb pour images couleur (Remarque 3) ou valeur absolue en NG
+    - Lissage spatial G_rho sur TV(S) (Remarque 1)
+    - 4 groupes de formules d'interpolation + moyennage des points milieux partagés
+    '''
+    h, w = image.shape[:2]
+    if image.ndim == 3:
+        feat = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb).astype(np.float64)
+        img_f = image.astype(np.float64)
+        pad_feat = np.pad(feat, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        diff_norm = lambda a, b: np.sum(np.abs(a - b), axis=2)
+    else:
+        img_f = image.astype(np.float64)
+        pad_feat = np.pad(img_f, ((1, 1), (1, 1)), mode="edge")
+        diff_norm = lambda a, b: np.abs(a - b)
+
+    # Différences directionnelles sur la grille paddée (H+2, W+2)
+    dh = diff_norm(pad_feat[:, :-1], pad_feat[:, 1:])       # (H+2, W+1)
+    dv = diff_norm(pad_feat[:-1, :], pad_feat[1:, :])       # (H+1, W+2)
+    da = diff_norm(pad_feat[:-1, :-1], pad_feat[1:, 1:])    # (H+1, W+1) main diag \
+    db = diff_norm(pad_feat[1:, :-1], pad_feat[:-1, 1:])    # (H+1, W+1) anti-diag /
+
+    ch, cw = h - 1, w - 1  # nombre de cellules (ch x cw)
+    sl = lambda arr, r0, c0: arr[r0:r0 + ch, c0:c0 + cw]
+    s2 = math.sqrt(2.0)
+
+    # Définition des 12 stencils (arêtes dans le voisinage local 4x4)
+    # Chaque entrée : (liste de (type_diff, r0, c0, poids), longueur_totale |S|)
+    stencil_defs = [
+        # 0: Vertical |
+        ([("dv", 0, 1, 22), ("dv", 1, 1, 43), ("dv", 2, 1, 22),
+          ("dv", 0, 2, 22), ("dv", 1, 2, 43), ("dv", 2, 2, 22)], 174.0),
+        # 1: Horizontal -
+        ([("dh", 1, 0, 22), ("dh", 1, 1, 43), ("dh", 1, 2, 22),
+          ("dh", 2, 0, 22), ("dh", 2, 1, 43), ("dh", 2, 2, 22)], 174.0),
+        # 2: Anti-diagonale / (45°)
+        ([("db", 1, 0, 16), ("db", 0, 1, 16), ("db", 1, 1, 59),
+          ("db", 2, 1, 16), ("db", 1, 2, 16)], 123.0 * s2),
+        # 3: Diagonale principale \ (-45°)
+        ([("da", 1, 2, 16), ("da", 0, 1, 16), ("da", 1, 1, 59),
+          ("da", 2, 1, 16), ("da", 1, 0, 16)], 123.0 * s2),
+        # 4: / douce (~26.6°)
+        ([("db", 0, 0, 17), ("dh", 0, 1, 22), ("dh", 2, 0, 17),
+          ("db", 1, 1, 34), ("dh", 1, 2, 17), ("dh", 3, 1, 22), ("db", 2, 2, 17)], 78.0 + 68.0 * s2),
+        # 5: \ raide (~63.4°)
+        ([("da", 0, 2, 17), ("dv", 1, 3, 22), ("dv", 0, 1, 17),
+          ("da", 1, 1, 34), ("dv", 2, 2, 17), ("dv", 1, 0, 22), ("da", 2, 0, 17)], 78.0 + 68.0 * s2),
+        # 6: \ douce (~-26.6°)
+        ([("dh", 0, 1, 22), ("da", 0, 2, 17), ("dh", 1, 0, 17),
+          ("da", 1, 1, 34), ("dh", 2, 2, 17), ("da", 2, 0, 17), ("dh", 3, 1, 22)], 78.0 + 68.0 * s2),
+        # 7: / raide (~63.4°)
+        ([("db", 0, 0, 17), ("dv", 1, 0, 22), ("dv", 0, 2, 17),
+          ("db", 1, 1, 34), ("dv", 2, 1, 17), ("dv", 1, 3, 22), ("db", 2, 2, 17)], 78.0 + 68.0 * s2),
+        # 8: Mixte /-H-/
+        ([("db", 1, 0, 34), ("dh", 1, 1, 39), ("dh", 2, 1, 39), ("db", 1, 2, 34)], 78.0 + 68.0 * s2),
+        # 9: Mixte \-H-\
+        ([("da", 1, 0, 34), ("dh", 1, 1, 39), ("dh", 2, 1, 39), ("da", 1, 2, 34)], 78.0 + 68.0 * s2),
+        # 10: Mixte \-V-\
+        ([("da", 0, 1, 34), ("dv", 1, 1, 39), ("dv", 1, 2, 39), ("da", 2, 1, 34)], 78.0 + 68.0 * s2),
+        # 11: Mixte /-V-/
+        ([("db", 0, 1, 34), ("dv", 1, 1, 39), ("dv", 1, 2, 39), ("db", 2, 1, 34)], 78.0 + 68.0 * s2),
+    ]
+
+    diff_lookup = {"dh": dh, "dv": dv, "da": da, "db": db}
+    tv_maps = np.empty((12, ch, cw), dtype=np.float64)
+    for idx, (edges, norm_len) in enumerate(stencil_defs):
+        acc = np.zeros((ch, cw), dtype=np.float64)
+        for dkey, r0, c0, weight in edges:
+            acc += weight * sl(diff_lookup[dkey], r0, c0)
+        tv_map = acc / norm_len
+        if rho > 0.0:
+            tv_map = cv2.GaussianBlur(tv_map, (3, 3), sigmaX=rho, borderType=cv2.BORDER_REFLECT)
+        tv_maps[idx] = tv_map
+
+    best = np.argmin(tv_maps, axis=0)  # (ch, cw)
+
+    # Coins des cellules (ch, cw, ...)
+    tl = img_f[:-1, :-1]
+    tr = img_f[:-1, 1:]
+    bl = img_f[1:, :-1]
+    br = img_f[1:, 1:]
+
+    mid_n_bil = 0.5 * (tl + tr)
+    mid_s_bil = 0.5 * (bl + br)
+    mid_w_bil = 0.5 * (tl + bl)
+    mid_e_bil = 0.5 * (tr + br)
+    avg4 = 0.25 * (tl + tr + bl + br)
+    diag_anti = 0.5 * (bl + tr)
+    diag_main = 0.5 * (tl + br)
+
+    n_val = mid_n_bil.copy()
+    s_val = mid_s_bil.copy()
+    w_val = mid_w_bil.copy()
+    e_val = mid_e_bil.copy()
+    x_val = avg4.copy()
+
+    # Groupe B : 45° / (2) et -45° \ (3)
+    m2 = (best == 2)
+    m3 = (best == 3)
+    x_val[m2] = diag_anti[m2]
+    x_val[m3] = diag_main[m3]
+
+    # Groupe C : 4, 5, 6, 7
+    m4 = (best == 4)
+    w_val[m4] = e_val[m4] = x_val[m4] = diag_anti[m4]
+
+    m5 = (best == 5)
+    n_val[m5] = s_val[m5] = x_val[m5] = diag_main[m5]
+
+    m6 = (best == 6)
+    w_val[m6] = e_val[m6] = x_val[m6] = diag_main[m6]
+
+    m7 = (best == 7)
+    n_val[m7] = s_val[m7] = x_val[m7] = diag_anti[m7]
+
+    # Groupe D : 8, 9, 10, 11
+    m8 = (best == 8)
+    w_val[m8] = mid_n_bil[m8]
+    e_val[m8] = mid_s_bil[m8]
+
+    m9 = (best == 9)
+    e_val[m9] = mid_n_bil[m9]
+    w_val[m9] = mid_s_bil[m9]
+
+    m10 = (best == 10)
+    n_val[m10] = mid_e_bil[m10]
+    s_val[m10] = mid_w_bil[m10]
+
+    m11 = (best == 11)
+    n_val[m11] = mid_w_bil[m11]
+    s_val[m11] = mid_e_bil[m11]
+
+    # Assemblage sur grille (2h, 2w) avec moyennage des milieux partagés entre cellules adjacentes
+    out_shape = (2 * h, 2 * w) + (() if image.ndim == 2 else (image.shape[2],))
+    out = np.zeros(out_shape, dtype=np.float64)
+
+    # Pixels originaux aux coordonnées paires
+    out[0:2 * h:2, 0:2 * w:2] = img_f
+    # Centres de cellules X aux coordonnées (impair, impair)
+    out[1:2 * h - 1:2, 1:2 * w - 1:2] = x_val
+
+    # Milieux horizontaux (pair, impair) : moyenne entre S_{r-1,c} et N_{r,c}
+    out[0, 1:2 * w - 1:2] = n_val[0]
+    out[2 * h - 2, 1:2 * w - 1:2] = s_val[-1]
+    if h > 2:
+        out[2:2 * h - 2:2, 1:2 * w - 1:2] = 0.5 * (s_val[:-1] + n_val[1:])
+
+    # Milieux verticaux (impair, pair) : moyenne entre E_{r,c-1} et W_{r,c}
+    out[1:2 * h - 1:2, 0] = w_val[:, 0]
+    out[1:2 * h - 1:2, 2 * w - 2] = e_val[:, -1]
+    if w > 2:
+        out[1:2 * h - 1:2, 2:2 * w - 2:2] = 0.5 * (e_val[:, :-1] + w_val[:, 1:])
+
+    # Extrapolation propre du dernier pixel de bord droit et bas pour atteindre exactement 2h x 2w
+    out[:, -1] = out[:, -2]
+    out[-1, :] = out[-2, :]
+
+    return np.clip(np.round(out), 0, 255).astype(np.uint8)
+
+# Évaluation comparative : Bilinéaire vs Bicubique vs Contours Pochoirs (2x et double 2x -> 4x)
+cs_2x_psnr, cs_2x_ssim = [], []
+bic_2x_psnr, bic_2x_ssim = [], []
+cs_4x_psnr, cs_4x_ssim = [], []
+bic_4x_psnr, bic_4x_ssim = [], []
+
+sample_vis = None
+for idx, (p_hr, p_l2, p_l4) in enumerate(sr_triplets):
+    hr = cv2.imread(str(p_hr), cv2.IMREAD_COLOR)
+    l2 = cv2.imread(str(p_l2), cv2.IMREAD_COLOR)
+    l4 = cv2.imread(str(p_l4), cv2.IMREAD_COLOR)
+
+    bic_2 = cv2.resize(l2, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_CUBIC)
+    cs_2 = super_resolution_contour_stencils_2x(l2, rho=0.5)
+
+    bic_4 = cv2.resize(l4, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_CUBIC)
+    cs_4 = super_resolution_contour_stencils_2x(
+        super_resolution_contour_stencils_2x(l4, rho=0.5), rho=0.5
+    )
+
+    bic_2x_psnr.append(calculate_psnr(hr, bic_2))
+    bic_2x_ssim.append(calculate_ssim(hr, bic_2))
+    cs_2x_psnr.append(calculate_psnr(hr, cs_2))
+    cs_2x_ssim.append(calculate_ssim(hr, cs_2))
+
+    bic_4x_psnr.append(calculate_psnr(hr, bic_4))
+    bic_4x_ssim.append(calculate_ssim(hr, bic_4))
+    cs_4x_psnr.append(calculate_psnr(hr, cs_4))
+    cs_4x_ssim.append(calculate_ssim(hr, cs_4))
+
+    if idx == 0:
+        nn_4 = cv2.resize(l4, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_NEAREST)
+        bil_4 = cv2.resize(l4, (hr.shape[1], hr.shape[0]), interpolation=cv2.INTER_LINEAR)
+        sample_vis = (hr, nn_4, bil_4, bic_4, cs_4)
+
+print(f"{'Méthode':28s} | {'Facteur':8s} | {'PSNR moyen':>12s} | {'SSIM moyen':>12s}")
+print("-" * 68)
+print(f"{'Bicubique (OpenCV)':28s} | {'2x':8s} | {np.mean(bic_2x_psnr):10.3f} dB | {np.mean(bic_2x_ssim):12.4f}")
+print(f"{'Contours Pochoirs (Perso)':28s} | {'2x':8s} | {np.mean(cs_2x_psnr):10.3f} dB | {np.mean(cs_2x_ssim):12.4f}")
+print(f"{'Bicubique (OpenCV)':28s} | {'4x':8s} | {np.mean(bic_4x_psnr):10.3f} dB | {np.mean(bic_4x_ssim):12.4f}")
+print(f"{'Contours Pochoirs (2x2x)':28s} | {'4x':8s} | {np.mean(cs_4x_psnr):10.3f} dB | {np.mean(cs_4x_ssim):12.4f}")
+
+if sample_vis is not None:
+    hr, nn_4, bil_4, bic_4, cs_4 = sample_vis
+    # Zoom sur un patch central 160x160 pour observer la netteté des contours
+    cy, cx = hr.shape[0] // 2, hr.shape[1] // 2
+    crop = lambda im: im[cy - 80:cy + 80, cx - 80:cx + 80]
+    show_images([
+        ("HR Vérité Terrain (zoom)", crop(hr)),
+        ("Plus proche voisin 4x", crop(nn_4)),
+        ("Bilinéaire 4x", crop(bil_4)),
+        ("Bicubique 4x", crop(bic_4)),
+        ("Contours Pochoirs 4x", crop(cs_4)),
+    ], cols=5)
+
+================================================================================
+CELL 7 | MARKDOWN
+================================================================================
+
+### Analyse & Remarques (SR 4x vs Double 2x et Contours Pochoirs)
+
+- **Plus proche voisin vs Bilinéaire vs Bicubique :** Le plus proche voisin introduit un fort effet d'escalier (crénelage). Le bilinéaire adoucit les transitions, tandis que le bicubique offre généralement les meilleurs scores PSNR/SSIM parmi les méthodes linéaires classiques en exploitant un voisinage de 16 pixels.
+- **SR 4x direct vs Double 2x ($2\times$ puis $2\times$) :** Sur l'interpolation bilinéaire ou bicubique, l'application en cascade (double $2\times$) peut légèrement différer du $4\times$ direct à cause de l'accumulation d'arrondis et de rééchantillonnages successifs (et du décalage de phase entre grilles). En revanche, pour les méthodes adaptatives par pyramide (*pyramid magnification* comme les Contours Pochoirs), l'application récursive $2\times \to 2\times$ affine progressivement l'orientation locale des contours.
+- **Contours Pochoirs vs Bicubique :** Comme souligné par Getreuer (2009, Figure 6), l'interpolation par contours pochoirs privilégie la **cohérence directionnelle et la netteté des bords** sans effet d'escalier ni dépassement (*overshoot*). Note technique importante : la grille OpenCV `cv2.resize` utilise un alignement centré $(i+0.5)/s - 0.5$ tandis que la grille cellulaire directe place $v_{i,j}$ en $(2i, 2j)$ (décalage d'un demi-pixel HR), ce qui peut influencer le PSNR brut selon la méthode utilisée pour générer les paires `LR`/`HR_GT`.
+

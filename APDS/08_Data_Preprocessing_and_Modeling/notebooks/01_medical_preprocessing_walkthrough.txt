@@ -1,0 +1,90 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 05 - Exercise 01: Medical Dataset Preprocessing Pipeline
+Demonstrates text standardization, missing value imputation, IQR outlier capping, one-hot encoding, and feature scaling.
+
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
+df = pd.read_csv("../data/messy_medical.csv")
+display(df)
+
+
+================================================================================
+CELL 3 | MARKDOWN
+================================================================================
+
+### 1. Text Normalization & Imputation
+
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+# Standardize text
+for c in ['Gender', 'Diagnosis']:
+    df[c] = df[c].astype(str).str.lower().str.strip().replace({'none': np.nan, 'nan': np.nan})
+
+# Mode imputation for categorical columns
+df['Gender'].fillna(df['Gender'].mode()[0], inplace=True)
+df['Diagnosis'].fillna(df['Diagnosis'].mode()[0], inplace=True)
+
+# Median imputation for numerical columns
+num_cols = ['Age', 'BloodPressure', 'Cholesterol']
+for c in num_cols:
+    df[c] = pd.to_numeric(df[c], errors='coerce')
+    df[c].fillna(df[c].median(), inplace=True)
+
+display(df)
+
+
+================================================================================
+CELL 5 | MARKDOWN
+================================================================================
+
+### 2. Outlier Capping (IQR Method)
+
+
+================================================================================
+CELL 6 | CODE
+================================================================================
+
+for c in num_cols:
+    q1 = df[c].quantile(0.25)
+    q3 = df[c].quantile(0.75)
+    iqr = q3 - q1
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+    df[c] = df[c].clip(lower=lower, upper=upper)
+
+display(df)
+
+
+================================================================================
+CELL 7 | MARKDOWN
+================================================================================
+
+### 3. One-Hot Encoding & Standardization
+
+
+================================================================================
+CELL 8 | CODE
+================================================================================
+
+df_encoded = pd.get_dummies(df, columns=['Gender', 'Diagnosis'], drop_first=True, dtype=int)
+
+scaler = StandardScaler()
+df_encoded[num_cols] = scaler.fit_transform(df_encoded[num_cols])
+
+print("--- Preprocessed Medical Dataset ---")
+display(df_encoded)
+
+

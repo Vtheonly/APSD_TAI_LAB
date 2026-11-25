@@ -1,0 +1,91 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 03 - Project 1: Modular Sales Inventory Processing
+This notebook processes raw inventory lines, instantiates object-oriented `Product` entities, and plots total inventory valuation.
+
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+import sys
+sys.path.append("..")
+from utils import clean_lines, clean_lines_loop, parse_products, Product
+import matplotlib.pyplot as plt
+
+# 1. Read raw text data
+with open("../data/raw/data.txt", "r", encoding="utf-8") as f:
+    raw_lines = f.readlines()
+
+print(f"Total Raw Lines: {len(raw_lines)}")
+
+
+================================================================================
+CELL 3 | MARKDOWN
+================================================================================
+
+### 2. Compare Loop vs. List Comprehension Cleaning
+
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+cleaned_loop = clean_lines_loop(raw_lines)
+cleaned_comp = clean_lines(raw_lines)
+
+assert cleaned_loop == cleaned_comp
+print(f"Cleaned Lines ({len(cleaned_comp)} records):")
+for line in cleaned_comp:
+    print(f"  {line}")
+
+
+================================================================================
+CELL 5 | MARKDOWN
+================================================================================
+
+### 3. Parse Records and Instantiate Product Objects
+
+
+================================================================================
+CELL 6 | CODE
+================================================================================
+
+parsed_tuples = parse_products(cleaned_comp)
+products = [Product(name, price, qty) for name, price, qty in parsed_tuples]
+
+for p in products:
+    print(f"{p} -> Inventory Value: ${p.total_value():,.2f}")
+
+
+================================================================================
+CELL 7 | MARKDOWN
+================================================================================
+
+### 4. Valuation Bar Chart
+
+
+================================================================================
+CELL 8 | CODE
+================================================================================
+
+names = [p.name for p in products]
+values = [p.total_value() for p in products]
+
+fig, ax = plt.subplots(figsize=(8, 4.5))
+bars = ax.bar(names, values, color="steelblue", edgecolor="black", alpha=0.85)
+
+ax.set_title("Total Sales Inventory Valuation by Product", fontsize=13, fontweight='bold', pad=10)
+ax.set_ylabel("Total Value ($)", fontsize=11)
+ax.grid(axis='y', linestyle='--', alpha=0.5)
+
+for bar in bars:
+    y = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2, y + 50, f"${y:,.0f}", ha='center', va='bottom', fontsize=10)
+
+plt.tight_layout()
+plt.show()
+
+

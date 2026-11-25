@@ -1,0 +1,180 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# TP 2 — Exercice 3 : Filtre adaptatif de Nagao
+
+Le filtre de Nagao découpe une fenêtre centrée autour de chaque pixel en **9 sous-régions** (1 carré central + 4 régions cardinales + 4 régions diagonales). Il remplace le pixel central par la **moyenne de la sous-région présentant la plus faible variance**, préservant ainsi les contours nets tout en lissant les zones homogènes.
+
+On teste `filtreNagao(im, taille)` pour $5\times 5$, $7\times 7$ et $9\times 9$ sur `im2` (bruit gaussien) et `im3` (bruit impulsionnel).
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+from pathlib import Path
+import math
+import time
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+def find_project_root():
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, cwd.parent, cwd.parent.parent):
+        if (candidate / "tp1_tp2_images").is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "Impossible de trouver le dossier 'tp1_tp2_images'. "
+        "Lancez Jupyter depuis la racine TAI ou depuis tp1_labs / tp2_labs."
+    )
+
+ROOT_DIR = find_project_root()
+IMG_DIR = ROOT_DIR / "tp1_tp2_images"
+OUT_DIR = ROOT_DIR / "tp2_labs" / "outputs"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_image(filename, flags=cv2.IMREAD_COLOR):
+    path = IMG_DIR / filename
+    img = cv2.imread(str(path), flags)
+    if img is None:
+        raise FileNotFoundError(f"Image introuvable ou illisible: {path}")
+    return img
+
+def show_images(items, cols=3, figsize_per_cell=(5, 4)):
+    n = len(items)
+    rows = math.ceil(n / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * figsize_per_cell[0], rows * figsize_per_cell[1]))
+    axes = np.atleast_1d(axes).ravel()
+    for ax in axes[n:]:
+        ax.axis("off")
+    for ax, (title, img) in zip(axes, items):
+        if img.ndim == 2:
+            ax.imshow(img, cmap="gray", vmin=0, vmax=255)
+        elif img.shape[2] == 3:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        elif img.shape[2] == 4:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA))
+        ax.set_title(title, fontsize=10)
+        ax.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+print(f"ROOT_DIR : {ROOT_DIR}")
+print(f"IMG_DIR  : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"OUT_DIR  : {OUT_DIR}")
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+im1 = load_image("tp1_tp2_cameraman_gray.bmp", cv2.IMREAD_GRAYSCALE)
+gauss_path = OUT_DIR / "tp2_exo1_cameraman_gauss_var100.bmp"
+sp_path = OUT_DIR / "tp2_exo1_cameraman_salt_pepper_p10.bmp"
+
+if not gauss_path.exists():
+    cv2.setRNGSeed(42)
+    g_noise = np.zeros(im1.shape, dtype=np.float32)
+    cv2.randn(g_noise, 0.0, 10.0)
+    im2 = np.clip(im1.astype(np.float32) + g_noise, 0, 255).astype(np.uint8)
+else:
+    im2 = cv2.imread(str(gauss_path), cv2.IMREAD_GRAYSCALE)
+
+if not sp_path.exists():
+    rng = np.random.default_rng(42)
+    im3 = im1.copy()
+    probs = rng.random(im1.shape)
+    im3[probs < 0.05] = 0
+    im3[probs > 0.95] = 255
+else:
+    im3 = cv2.imread(str(sp_path), cv2.IMREAD_GRAYSCALE)
+
+def calculate_psnr(a, b):
+    mse = np.mean((a.astype(np.float64) - b.astype(np.float64)) ** 2)
+    return float("inf") if mse == 0 else 10.0 * math.log10((255.0 ** 2) / mse)
+
+def build_nagao_masks(taille_filtre):
+    if taille_filtre < 5 or taille_filtre % 2 == 0:
+        raise ValueError("La taille du filtre Nagao doit être impaire et >= 5.")
+    r = taille_filtre // 2
+    c = r  # index du centre dans la matrice k x k
+    masks = []
+
+    # 1) Masque central (3x3 pour 5x5 et 7x7, 5x5 pour 9x9)
+    kc = 1 if r <= 3 else r // 2
+    m_center = np.zeros((taille_filtre, taille_filtre), dtype=np.float64)
+    m_center[c - kc:c + kc + 1, c - kc:c + kc + 1] = 1.0
+    masks.append(m_center)
+
+    # 2) Masque Nord (et rotations 90°, 180°, 270° pour Ouest, Sud, Est)
+    m_north = np.zeros((taille_filtre, taille_filtre), dtype=np.float64)
+    m_north[c, c] = 1.0
+    for dr in range(1, r + 1):
+        half_w = min(dr, max(1, r - 1))
+        m_north[c - dr, c - half_w:c + half_w + 1] = 1.0
+    for rot in range(4):
+        masks.append(np.rot90(m_north, k=rot))
+
+    # 3) Masque Nord-Ouest (et rotations 90°, 180°, 270° pour SW, SE, NE)
+    m_nw = np.zeros((taille_filtre, taille_filtre), dtype=np.float64)
+    m_nw[c, c] = 1.0
+    m_nw[c - 1, c] = 1.0
+    m_nw[c, c - 1] = 1.0
+    m_nw[0:c, 0:c] = 1.0
+    for rot in range(4):
+        masks.append(np.rot90(m_nw, k=rot))
+
+    return masks
+
+def filtreNagao(im, taille_filtre=5, iterations=1):
+    masks = build_nagao_masks(taille_filtre)
+    current = im.astype(np.float64)
+    for _ in range(iterations):
+        img_sq = current * current
+        means = []
+        variances = []
+        for mask in masks:
+            kernel = mask / np.sum(mask)
+            mean = cv2.filter2D(current, cv2.CV_64F, kernel, borderType=cv2.BORDER_REFLECT)
+            mean_sq = cv2.filter2D(img_sq, cv2.CV_64F, kernel, borderType=cv2.BORDER_REFLECT)
+            var = np.maximum(0.0, mean_sq - mean * mean)
+            means.append(mean)
+            variances.append(var)
+        means_stack = np.stack(means, axis=0)
+        vars_stack = np.stack(variances, axis=0)
+        best_idx = np.argmin(vars_stack, axis=0)
+        current = np.take_along_axis(means_stack, best_idx[None, :, :], axis=0)[0]
+    return np.clip(np.round(current), 0, 255).astype(np.uint8)
+
+# Vérification des 9 sous-masques 5x5
+masks5 = build_nagao_masks(5)
+print("Nombre de sous-régions :", len(masks5), "| Tailles :", [int(m.sum()) for m in masks5])
+
+sizes = [5, 7, 9]
+results_im2 = []
+results_im3 = []
+print(f"\nBaseline -> im2: {calculate_psnr(im1, im2):.3f} dB | im3: {calculate_psnr(im1, im3):.3f} dB\n")
+print(f"{'Fenêtre Nagao':16s} | {'PSNR im2 (Gauss)':>16s} | {'PSNR im3 (S&P)':>14s}")
+print("-" * 54)
+for sz in sizes:
+    out2 = filtreNagao(im2, sz)
+    out3 = filtreNagao(im3, sz)
+    results_im2.append((f"Nagao {sz}x{sz} (im2, {calculate_psnr(im1, out2):.2f} dB)", out2))
+    results_im3.append((f"Nagao {sz}x{sz} (im3, {calculate_psnr(im1, out3):.2f} dB)", out3))
+    print(f"{f'{sz}x{sz}':16s} | {calculate_psnr(im1, out2):14.3f} dB | {calculate_psnr(im1, out3):12.3f} dB")
+
+out2_iter3 = filtreNagao(im2, 5, iterations=3)
+print(f"{'5x5 (3 itér.)':16s} | {calculate_psnr(im1, out2_iter3):14.3f} dB | {'-':>14s}")
+
+show_images([("Originale", im1)] + results_im2, cols=4)
+show_images([("Bruit S&P", im3)] + results_im3, cols=4)
+
+================================================================================
+CELL 4 | MARKDOWN
+================================================================================
+
+### Analyse des résultats du filtre de Nagao
+
+- **Sur le bruit Gaussien (`im2`) :** Le filtre de Nagao $5\times 5$ améliore nettement le PSNR par rapport à l'image bruitée tout en conservant des contours très nets (effet *cartoon/peinture* qui renforce les transitions). Augmenter la fenêtre vers $7\times 7$ et $9\times 9$ élargit les sous-régions, ce qui tend à gommer certains détails fins et faire baisser légèrement le PSNR.
+- **Sur le bruit Poivre et Sel (`im3`) :** Contrairement au moyenneur classique, Nagao évite automatiquement les cliques contenant un pixel aberrant (car sa variance explose) tant qu'au moins une des 9 cliques autour du pixel est saine. Toutefois, à $p=10\%$ et lorsque le pixel central lui-même est corrompu (0 ou 255), toutes les cliques contiennent le pixel central : le filtre médian reste donc supérieur sur le bruit impulsionnel pur.
+

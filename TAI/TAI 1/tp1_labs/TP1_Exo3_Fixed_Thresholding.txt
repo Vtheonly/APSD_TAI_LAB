@@ -1,0 +1,109 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# TP 1 — Exercice 3 : Seuillage fixe d'une image
+
+**Énoncé :** Binariser `tp1_tp2_compteur_water_meter.jpg` (`compteur.jpg`) avec le seuil fixe $T = 80$ :
+- Pixels avec niveau de gris $> 80 \rightarrow 255$ (Blanc)
+- Pixels avec niveau de gris $\le 80 \rightarrow 0$ (Noir)
+
+Comparer l'implémentation OpenCV (`imgb1`) avec notre algorithme personnel (`imgb2`), puis sauvegarder `imgb1`.
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+from pathlib import Path
+import math
+import time
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+def find_project_root():
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, cwd.parent, cwd.parent.parent):
+        if (candidate / "tp1_tp2_images").is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "Impossible de trouver le dossier 'tp1_tp2_images'. "
+        "Lancez Jupyter depuis la racine TAI ou depuis tp1_labs / tp2_labs."
+    )
+
+ROOT_DIR = find_project_root()
+IMG_DIR = ROOT_DIR / "tp1_tp2_images"
+OUT_DIR = ROOT_DIR / "tp1_labs" / "outputs"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_image(filename, flags=cv2.IMREAD_COLOR):
+    path = IMG_DIR / filename
+    img = cv2.imread(str(path), flags)
+    if img is None:
+        raise FileNotFoundError(f"Image introuvable ou illisible: {path}")
+    return img
+
+def show_images(items, cols=3, figsize_per_cell=(5, 4)):
+    n = len(items)
+    rows = math.ceil(n / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * figsize_per_cell[0], rows * figsize_per_cell[1]))
+    axes = np.atleast_1d(axes).ravel()
+    for ax in axes[n:]:
+        ax.axis("off")
+    for ax, (title, img) in zip(axes, items):
+        if img.ndim == 2:
+            ax.imshow(img, cmap="gray", vmin=0, vmax=255)
+        elif img.shape[2] == 3:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        elif img.shape[2] == 4:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA))
+        ax.set_title(title, fontsize=10)
+        ax.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+print(f"ROOT_DIR : {ROOT_DIR}")
+print(f"IMG_DIR  : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"OUT_DIR  : {OUT_DIR}")
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+img_gray = load_image("tp1_tp2_compteur_water_meter.jpg", cv2.IMREAD_GRAYSCALE)
+SEUIL = 80
+
+# 1) Binarisation avec OpenCV
+_, imgb1 = cv2.threshold(img_gray, SEUIL, 255, cv2.THRESH_BINARY)
+
+# 2) Binarisation avec fonction personnelle (boucles explicites + NumPy)
+def seuillage_fixe_perso(image, seuil=80):
+    h, w = image.shape
+    out = np.zeros((h, w), dtype=np.uint8)
+    for y in range(h):
+        for x in range(w):
+            if image[y, x] > seuil:
+                out[y, x] = 255
+            else:
+                out[y, x] = 0
+    return out
+
+imgb2 = seuillage_fixe_perso(img_gray, SEUIL)
+
+# Vérification d'équivalence stricte
+identiques = np.array_equal(imgb1, imgb2)
+print(f"OpenCV et fonction personnelle strictement identiques : {identiques}")
+
+# Enregistrement de imgb1 dans tp1_labs/outputs/
+out_path = OUT_DIR / "tp1_exo3_compteur_binary_imgb1.jpg"
+cv2.imwrite(str(out_path), imgb1)
+print(f"Image binaire sauvegardée : {out_path}")
+
+diff_map = np.abs(imgb1.astype(np.int16) - imgb2.astype(np.int16)).astype(np.uint8)
+show_images([
+    ("Originale (NG)", img_gray),
+    ("Binaire OpenCV (imgb1)", imgb1),
+    ("Binaire Perso (imgb2)", imgb2),
+    ("Différence |imgb1 - imgb2|", diff_map),
+], cols=4)
+

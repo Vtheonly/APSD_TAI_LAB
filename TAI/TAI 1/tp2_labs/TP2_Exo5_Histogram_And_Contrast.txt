@@ -1,0 +1,261 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# TP 2 — Exercice 5 : Amélioration d'histogramme et de contraste
+
+Images : `tp1_tp2_compteur_water_meter.jpg` (`im1` en NG) et `tp2_exo5_glaucoma_retinal_fundus.jpg` (`imc1` en couleur).
+1. **Expansion dynamique :** `cv2.normalize()` + fonction personnelle `expansionHisto(image, seuil=0, Ymin=0, Ymax=255)`.
+2. **Égalisation d'histogramme** (sur canal $L$ dans l'espace Lab pour l'image couleur `imc1`) :
+   - a) Égalisation globale (`cv2.equalizeHist` + `egalisationHistoGlobale`)
+   - b) Égalisation adaptative AHE (OpenCV + `egalisationAHE` avec interpolation bilinéaire entre blocs)
+   - c) Égalisation adaptative limitée CLAHE (`cv2.createCLAHE` + `egalisationCLAHE` avec *clip limit* et redistribution uniforme)
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+from pathlib import Path
+import math
+import time
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+def find_project_root():
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, cwd.parent, cwd.parent.parent):
+        if (candidate / "tp1_tp2_images").is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "Impossible de trouver le dossier 'tp1_tp2_images'. "
+        "Lancez Jupyter depuis la racine TAI ou depuis tp1_labs / tp2_labs."
+    )
+
+ROOT_DIR = find_project_root()
+IMG_DIR = ROOT_DIR / "tp1_tp2_images"
+OUT_DIR = ROOT_DIR / "tp2_labs" / "outputs"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_image(filename, flags=cv2.IMREAD_COLOR):
+    path = IMG_DIR / filename
+    img = cv2.imread(str(path), flags)
+    if img is None:
+        raise FileNotFoundError(f"Image introuvable ou illisible: {path}")
+    return img
+
+def show_images(items, cols=3, figsize_per_cell=(5, 4)):
+    n = len(items)
+    rows = math.ceil(n / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * figsize_per_cell[0], rows * figsize_per_cell[1]))
+    axes = np.atleast_1d(axes).ravel()
+    for ax in axes[n:]:
+        ax.axis("off")
+    for ax, (title, img) in zip(axes, items):
+        if img.ndim == 2:
+            ax.imshow(img, cmap="gray", vmin=0, vmax=255)
+        elif img.shape[2] == 3:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        elif img.shape[2] == 4:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA))
+        ax.set_title(title, fontsize=10)
+        ax.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+print(f"ROOT_DIR : {ROOT_DIR}")
+print(f"IMG_DIR  : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"OUT_DIR  : {OUT_DIR}")
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+im1 = load_image("tp1_tp2_compteur_water_meter.jpg", cv2.IMREAD_GRAYSCALE)
+imc1 = load_image("tp2_exo5_glaucoma_retinal_fundus.jpg", cv2.IMREAD_COLOR)
+
+def plot_image_with_hist(img_list, title_prefix=""):
+    n = len(img_list)
+    fig, axes = plt.subplots(2, n, figsize=(5 * n, 7))
+    if n == 1:
+        axes = axes[:, None]
+    for idx, (label, im) in enumerate(img_list):
+        if im.ndim == 2:
+            axes[0, idx].imshow(im, cmap="gray", vmin=0, vmax=255)
+            h = cv2.calcHist([im], [0], None, [256], [0, 256]).ravel()
+            axes[1, idx].plot(h, color="black")
+        else:
+            axes[0, idx].imshow(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
+            for ch, col in enumerate(("blue", "green", "red")):
+                h = cv2.calcHist([im], [ch], None, [256], [0, 256]).ravel()
+                axes[1, idx].plot(h, color=col, alpha=0.85)
+        axes[0, idx].set_title(f"{title_prefix}{label}", fontsize=10)
+        axes[0, idx].axis("off")
+        axes[1, idx].set_xlim([0, 255])
+        axes[1, idx].grid(alpha=0.25)
+    plt.tight_layout()
+    plt.show()
+
+# 1.a) Histogrammes originaux
+plot_image_with_hist([("im1 (NG originale)", im1), ("imc1 (Couleur originale)", imc1)])
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+# 1.b) cv2.normalize() et 1.c) expansionHisto()
+im2_cv = cv2.normalize(im1, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+imc2_cv = cv2.normalize(imc1, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+
+def expansion_canal(canal, seuil=0, Ymin=0, Ymax=255):
+    hist = np.bincount(canal.ravel(), minlength=256)
+    valid = np.where(hist > seuil)[0]
+    if len(valid) == 0:
+        Xmin, Xmax = int(canal.min()), int(canal.max())
+    else:
+        Xmin, Xmax = int(valid[0]), int(valid[-1])
+    if Xmax == Xmin:
+        return np.full_like(canal, Ymin, dtype=np.uint8)
+    alpha = (Ymin * Xmax - Ymax * Xmin) / (Xmax - Xmin)
+    beta = (Ymax - Ymin) / (Xmax - Xmin)
+    res = alpha + beta * canal.astype(np.float64)
+    return np.clip(np.round(res), Ymin, Ymax).astype(np.uint8)
+
+def expansionHisto(image, seuil=0, Ymin=0, Ymax=255):
+    if image.ndim == 2:
+        return expansion_canal(image, seuil, Ymin, Ymax)
+    # Étirement par canal (ou sur luminance Lab)
+    out = np.empty_like(image)
+    for c in range(image.shape[2]):
+        out[:, :, c] = expansion_canal(image[:, :, c], seuil, Ymin, Ymax)
+    return out
+
+im2_perso = expansionHisto(im1, seuil=0, Ymin=0, Ymax=255)
+imc2_perso = expansionHisto(imc1, seuil=0, Ymin=0, Ymax=255)
+im2_seuil = expansionHisto(im1, seuil=20, Ymin=0, Ymax=255)
+
+print("Diff max |cv2.normalize - expansionHisto| (NG)     :", np.max(np.abs(im2_cv.astype(int) - im2_perso.astype(int))))
+print("Diff max |cv2.normalize - expansionHisto| (Couleur):", np.max(np.abs(imc2_cv.astype(int) - imc2_perso.astype(int))))
+
+plot_image_with_hist([
+    ("im1 Originale", im1),
+    ("cv2.normalize", im2_cv),
+    ("expansionHisto (seuil=0)", im2_perso),
+    ("expansionHisto (seuil=20)", im2_seuil),
+])
+plot_image_with_hist([
+    ("imc1 Originale", imc1),
+    ("cv2.normalize", imc2_cv),
+    ("expansionHisto (seuil=0)", imc2_perso),
+])
+
+================================================================================
+CELL 5 | CODE
+================================================================================
+
+# 2) Égalisation d'histogramme : Globale, AHE et CLAHE (OpenCV + Perso)
+def egalisation_globale_canal(canal):
+    hist = np.bincount(canal.ravel(), minlength=256)
+    hc = np.cumsum(hist)
+    nz = np.where(hc > 0)[0]
+    if len(nz) == 0:
+        return canal.copy()
+    hc_min = hc[nz[0]]
+    n_pix = canal.size
+    if n_pix == hc_min:
+        return canal.copy()
+    lut = np.round(255.0 * (hc - hc_min) / (n_pix - hc_min))
+    lut = np.clip(lut, 0, 255).astype(np.uint8)
+    return lut[canal]
+
+def egalisation_locale_blocs(canal, tile_grid=(8, 8), clip_limit=None):
+    h, w = canal.shape
+    ty, tx = tile_grid
+    pad_h = (ty - (h % ty)) % ty
+    pad_w = (tx - (w % tx)) % tx
+    padded = np.pad(canal, ((0, pad_h), (0, pad_w)), mode="reflect")
+    ph, pw = padded.shape
+    th, tw = ph // ty, pw // tx
+
+    luts = np.zeros((ty, tx, 256), dtype=np.float64)
+    n_tile = th * tw
+    for iy in range(ty):
+        for ix in range(tx):
+            tile = padded[iy * th:(iy + 1) * th, ix * tw:(ix + 1) * tw]
+            hist = np.bincount(tile.ravel(), minlength=256).astype(np.int64)
+            if clip_limit is not None and clip_limit > 0:
+                limit = max(1, int(round(clip_limit * n_tile / 256.0)))
+                excess = np.sum(np.maximum(0, hist - limit))
+                hist = np.minimum(hist, limit)
+                avg_inc = excess // 256
+                rem = int(excess % 256)
+                hist += avg_inc
+                if rem > 0:
+                    step = max(1, 256 // rem)
+                    indices = np.arange(0, 256, step)[:rem]
+                    hist[indices] += 1
+            hc = np.cumsum(hist).astype(np.float64)
+            lut = np.round(255.0 * hc / max(1.0, hc[-1]))
+            luts[iy, ix] = np.clip(lut, 0, 255)
+
+    # Interpolation bilinéaire entre les centres des blocs
+    ys = np.arange(h, dtype=np.float64)
+    xs = np.arange(w, dtype=np.float64)
+    gy = (ys + 0.5) / th - 0.5
+    gx = (xs + 0.5) / tw - 0.5
+    y0 = np.clip(np.floor(gy).astype(np.int64), 0, ty - 1)
+    x0 = np.clip(np.floor(gx).astype(np.int64), 0, tx - 1)
+    y1 = np.clip(y0 + 1, 0, ty - 1)
+    x1 = np.clip(x0 + 1, 0, tx - 1)
+    wy = np.clip(gy - y0, 0.0, 1.0)[:, None]
+    wx = np.clip(gx - x0, 0.0, 1.0)[None, :]
+
+    v00 = luts[y0[:, None], x0[None, :], canal]
+    v01 = luts[y0[:, None], x1[None, :], canal]
+    v10 = luts[y1[:, None], x0[None, :], canal]
+    v11 = luts[y1[:, None], x1[None, :], canal]
+
+    out = (
+        (1.0 - wy) * (1.0 - wx) * v00
+        + (1.0 - wy) * wx * v01
+        + wy * (1.0 - wx) * v10
+        + wy * wx * v11
+    )
+    return np.clip(np.round(out), 0, 255).astype(np.uint8)
+
+def apply_on_gray_or_lab(image, func_2d):
+    if image.ndim == 2:
+        return func_2d(image)
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
+    lab[:, :, 0] = func_2d(lab[:, :, 0])
+    return cv2.cvtColor(lab, cv2.COLOR_Lab2BGR)
+
+# Fonctions personnelles
+egalisationHistoGlobale = lambda img: apply_on_gray_or_lab(img, egalisation_globale_canal)
+egalisationAHE = lambda img: apply_on_gray_or_lab(img, lambda c: egalisation_locale_blocs(c, (8, 8), None))
+egalisationCLAHE = lambda img: apply_on_gray_or_lab(img, lambda c: egalisation_locale_blocs(c, (8, 8), 2.0))
+
+# Fonctions OpenCV
+cv_glob = lambda img: apply_on_gray_or_lab(img, cv2.equalizeHist)
+cv_ahe_obj = cv2.createCLAHE(clipLimit=1000.0, tileGridSize=(8, 8))
+cv_clahe_obj = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+cv_ahe = lambda img: apply_on_gray_or_lab(img, cv_ahe_obj.apply)
+cv_clahe = lambda img: apply_on_gray_or_lab(img, cv_clahe_obj.apply)
+
+plot_image_with_hist([
+    ("Globale OpenCV", cv_glob(im1)),
+    ("Globale Perso", egalisationHistoGlobale(im1)),
+    ("AHE OpenCV", cv_ahe(im1)),
+    ("AHE Perso", egalisationAHE(im1)),
+    ("CLAHE OpenCV", cv_clahe(im1)),
+    ("CLAHE Perso", egalisationCLAHE(im1)),
+])
+
+plot_image_with_hist([
+    ("imc1 Globale OpenCV", cv_glob(imc1)),
+    ("imc1 Globale Perso", egalisationHistoGlobale(imc1)),
+    ("imc1 AHE Perso", egalisationAHE(imc1)),
+    ("imc1 CLAHE OpenCV", cv_clahe(imc1)),
+    ("imc1 CLAHE Perso", egalisationCLAHE(imc1)),
+])
+

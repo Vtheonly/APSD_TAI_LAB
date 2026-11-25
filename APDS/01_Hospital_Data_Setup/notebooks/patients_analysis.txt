@@ -1,0 +1,80 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 02: Hospital Patient Cohort Ingestion & Inspection
+This notebook walks through ingesting clinical data from `patients.csv`, computing summary statistics, and visualizing patient attributes.
+
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load patient records using a relative path
+df = pd.read_csv("../data/patients.csv")
+print(f"Cohort Dimensions: {df.shape[0]} rows, {df.shape[1]} columns")
+df.head()
+
+
+================================================================================
+CELL 3 | MARKDOWN
+================================================================================
+
+### 1. Descriptive Summary Statistics
+Review continuous metrics (Age, BloodPressure, Cholesterol) and frequency distributions across categorical features.
+
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+print("--- Numerical Feature Summaries ---")
+display(df.describe())
+
+print("\n--- Sex Distribution ---")
+print(df['Sex'].value_counts())
+
+print("\n--- Clinical Diagnosis Distribution ---")
+print(df['Diagnosis'].value_counts())
+
+
+================================================================================
+CELL 5 | MARKDOWN
+================================================================================
+
+### 2. Clinical Visualization
+Create a scatter plot of Patient Age vs. Serum Cholesterol, colored by Blood Pressure.
+
+
+================================================================================
+CELL 6 | CODE
+================================================================================
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+scatter = ax.scatter(
+    df['Age'], 
+    df['Cholesterol'], 
+    c=df['BloodPressure'], 
+    cmap='coolwarm', 
+    s=20,
+    alpha=0.5,
+    edgecolors='black',
+    linewidth=1.2
+)
+
+cbar = fig.colorbar(scatter, ax=ax)
+cbar.set_label('Blood Pressure (mmHg)', fontsize=11)
+
+ax.set_title("Patient Age vs. Serum Cholesterol Levels", fontsize=13, fontweight='bold', pad=12)
+ax.set_xlabel("Patient Age (Years)", fontsize=11)
+ax.set_ylabel("Serum Cholesterol (mg/dL)", fontsize=11)
+ax.grid(True, linestyle='--', alpha=0.5)
+
+plt.tight_layout()
+plt.show()
+
+

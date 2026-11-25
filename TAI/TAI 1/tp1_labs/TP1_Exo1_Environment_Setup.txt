@@ -1,0 +1,91 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# TP 1 — Exercice 1 : Configuration de l'environnement et vérification des bibliothèques
+
+Ce notebook valide l'installation des packages Python requis (`numpy`, `opencv-python` / `opencv-contrib-python`, `matplotlib`) ainsi que la structure consolidée du dossier d'images `tp1_tp2_images/`.
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+from pathlib import Path
+import math
+import time
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+def find_project_root():
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, cwd.parent, cwd.parent.parent):
+        if (candidate / "tp1_tp2_images").is_dir():
+            return candidate
+    raise FileNotFoundError(
+        "Impossible de trouver le dossier 'tp1_tp2_images'. "
+        "Lancez Jupyter depuis la racine TAI ou depuis tp1_labs / tp2_labs."
+    )
+
+ROOT_DIR = find_project_root()
+IMG_DIR = ROOT_DIR / "tp1_tp2_images"
+OUT_DIR = ROOT_DIR / "tp1_labs" / "outputs"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_image(filename, flags=cv2.IMREAD_COLOR):
+    path = IMG_DIR / filename
+    img = cv2.imread(str(path), flags)
+    if img is None:
+        raise FileNotFoundError(f"Image introuvable ou illisible: {path}")
+    return img
+
+def show_images(items, cols=3, figsize_per_cell=(5, 4)):
+    n = len(items)
+    rows = math.ceil(n / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * figsize_per_cell[0], rows * figsize_per_cell[1]))
+    axes = np.atleast_1d(axes).ravel()
+    for ax in axes[n:]:
+        ax.axis("off")
+    for ax, (title, img) in zip(axes, items):
+        if img.ndim == 2:
+            ax.imshow(img, cmap="gray", vmin=0, vmax=255)
+        elif img.shape[2] == 3:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        elif img.shape[2] == 4:
+            ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA))
+        ax.set_title(title, fontsize=10)
+        ax.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+print(f"ROOT_DIR : {ROOT_DIR}")
+print(f"IMG_DIR  : {IMG_DIR} ({len(list(IMG_DIR.iterdir()))} images)")
+print(f"OUT_DIR  : {OUT_DIR}")
+
+================================================================================
+CELL 3 | CODE
+================================================================================
+
+import sys
+import importlib
+
+print(f"Python version : {sys.version.split()[0]}")
+for pkg in ("numpy", "cv2", "matplotlib", "scipy", "skimage"):
+    try:
+        mod = importlib.import_module(pkg)
+        ver = getattr(mod, "__version__", "installed")
+        print(f"  [OK] {pkg:12s} : {ver}")
+    except ImportError:
+        status = "OPTIONNEL" if pkg in ("scipy", "skimage") else "MANQUANT"
+        print(f"  [{status}] {pkg}")
+
+has_ximgproc = hasattr(cv2, "ximgproc")
+print(f"  OpenCV contrib (cv2.ximgproc) disponible : {has_ximgproc}")
+
+images = sorted(p.name for p in IMG_DIR.iterdir() if p.is_file())
+print(f"\nImages disponibles dans tp1_tp2_images ({len(images)}) :")
+for name in images[:15]:
+    print("  -", name)
+if len(images) > 15:
+    print(f"  ... et {len(images) - 15} autres images.")
+

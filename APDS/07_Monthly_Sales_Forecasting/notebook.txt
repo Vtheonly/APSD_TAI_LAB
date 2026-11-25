@@ -1,0 +1,124 @@
+================================================================================
+CELL 1 | MARKDOWN
+================================================================================
+
+# Tutorial 04 - Project: Monthly Sales Trend & Forecasting Engine
+Generates 12-month synthetic sales records for four products, computes growth indicators, and plots seasonal patterns.
+
+
+================================================================================
+CELL 2 | CODE
+================================================================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from utils import generate_random_sales
+import os
+
+np.random.seed(42)
+os.makedirs("data", exist_ok=True)
+
+# Generate 12 monthly dates for 2025
+months = pd.date_range(start="2025-01-01", end="2025-12-01", freq="MS")
+num_m = len(months)
+
+df_initial = pd.DataFrame({
+    "Date": months,
+    "Product_A": generate_random_sales(50, 100, num_m),
+    "Product_B": generate_random_sales(30, 80, num_m),
+    "Product_C": generate_random_sales(20, 60, num_m),
+    "Product_D": generate_random_sales(10, 50, num_m)
+})
+
+df_initial.to_csv("data/initial.csv", index=False)
+display(df_initial.head())
+
+
+================================================================================
+CELL 3 | MARKDOWN
+================================================================================
+
+### Metric Calculations & Quarter Mapping
+
+
+================================================================================
+CELL 4 | CODE
+================================================================================
+
+df_final = df_initial.copy()
+df_final["Month"] = df_final["Date"].dt.strftime("%b")
+pcols = ["Product_A", "Product_B", "Product_C", "Product_D"]
+
+df_final["Total_Sales"] = df_final[pcols].sum(axis=1)
+df_final["Average_Sales"] = df_final[pcols].mean(axis=1)
+df_final["MoM_Growth"] = df_final["Total_Sales"].pct_change() * 100
+
+def assign_quarter(dt):
+    m = dt.month
+    if m <= 3: return "Q1"
+    elif m <= 6: return "Q2"
+    elif m <= 9: return "Q3"
+    else: return "Q4"
+
+df_final["Quarter"] = df_final["Date"].apply(assign_quarter)
+df_final["Max_Product"] = df_final[pcols].idxmax(axis=1)
+df_final["Min_Product"] = df_final[pcols].idxmin(axis=1)
+
+df_final.to_csv("data/final.csv", index=False)
+display(df_final.head())
+
+
+================================================================================
+CELL 5 | MARKDOWN
+================================================================================
+
+### Quarterly Summary Table
+
+
+================================================================================
+CELL 6 | CODE
+================================================================================
+
+pivot_q = df_final.pivot_table(index="Quarter", values=pcols + ["Total_Sales"], aggfunc="mean")
+pivot_q.to_csv("data/output.csv")
+display(pivot_q)
+
+
+================================================================================
+CELL 7 | MARKDOWN
+================================================================================
+
+### 4-Panel Visualization Grid
+
+
+================================================================================
+CELL 8 | CODE
+================================================================================
+
+sns.set_theme(style="whitegrid")
+fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+
+# 1. Product Trends
+for col in pcols:
+    axs[0, 0].plot(df_final["Month"], df_final[col], marker='o', label=col)
+axs[0, 0].set_title("Product Monthly Trends", fontweight='bold')
+axs[0, 0].legend()
+
+# 2. Stacked Sales Volume
+df_final.set_index("Month")[pcols].plot(kind="bar", stacked=True, ax=axs[0, 1], colormap="viridis")
+axs[0, 1].set_title("Monthly Total Sales Volume", fontweight='bold')
+
+# 3. Density Heatmap
+sns.heatmap(df_final.set_index("Month")[pcols], annot=True, fmt="d", cmap="YlGnBu", ax=axs[1, 0])
+axs[1, 0].set_title("Monthly Sales Density", fontweight='bold')
+
+# 4. Variance Boxplot
+sns.boxplot(data=df_final[pcols], ax=axs[1, 1], palette="Set2")
+axs[1, 1].set_title("Product Sales Distributions", fontweight='bold')
+
+plt.tight_layout()
+plt.show()
+
+
