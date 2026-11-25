@@ -1,13 +1,15 @@
 # APDS — Advanced Python & Data Science Coursework
 
-This folder contains the **APDS coursework track**: eight self-contained,
-numbered practical projects covering the full data-science workflow with
-Python.
+This folder contains the **APDS coursework track**: nine self-contained,
+numbered projects covering the full data-science workflow with Python —
+from the Chapter 1 theory exercises to the end-to-end preprocessing and
+modeling pipeline.
 
 ## Projects
 
 | # | Project | Focus | Entry points |
 |---|---------|-------|--------------|
+| 00 | `00_Introduction_Exercises` | Chapter 1 theory: data types, 8-step workflow, project roles (TP1) | `notebooks/01_introduction_exercises.ipynb` |
 | 01 | `01_Hospital_Data_Setup` | environment validation, first pandas ingestion | `notebooks/patients_analysis.ipynb`, `scripts/verify_environment.py` |
 | 02 | `02_Sales_Inventory_Pipeline` | modular code, text parsing, OOP | `notebooks/analysis.ipynb`, `scripts/create_products.py`, `utils/` |
 | 03 | `03_Student_Simulation_Analytics` | synthetic data generation & statistics | `main.ipynb`, `students.py`, `analysis.py` |
