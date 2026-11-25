@@ -54,8 +54,11 @@ Thumbs.db
 desktop.ini
 
 # --- TAI runtime generated outputs -------------------------------------
-# (Notebooks write their generated images here; they are never committed.)
-TAI/outputs/
+# (Notebooks write their generated images here; they are never committed.
+# The .gitkeep exception keeps the directory itself tracked so a fresh
+# clone has the output root that TAI.utils.env_io.bootstrap() expects.)
+TAI/outputs/*
+!TAI/outputs/.gitkeep
 
 # --- APDS generated data / benchmark artifacts --------------------------
 APDS/04_One_Million_Record_Streaming/large_patients.csv
