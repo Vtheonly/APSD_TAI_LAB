@@ -190,9 +190,44 @@ quiz validator 237 questions ALL VALID · all added snippets executed.
 - `s.find("cie")` on `"  Data Science  "` is 8 (not 11) — snippet-execution
   verification caught the note's own comment error before commit.
 
+## Session 5 — issue #8 (APDS/02 processed-data step + Product.__str__)
+
+**Completed work** (lab commit `2535dff`, branch `image-processing-data-science`;
+issue #8 closed with evidence comment):
+1. `utils/helpers.py` + `utils/__init__.py`: new `save_processed_data(records,
+   processed_dir)` — writes `data/processed/cleaned_data.txt` (cleaned
+   `name,price,quantity` lines) and `products_summary.csv` (records +
+   computed `total_value` column); exported from the package.
+2. `scripts/create_products.py`: CLI creates `data/processed/` and persists
+   both artifacts before the valuation report (smoke-run verified: corrupted
+   row still skipped with warning, 5 valid products, Total 8500.0).
+3. `notebooks/analysis.ipynb`: 11 → 15 cells — new **Section 5
+   `Product.__str__` showcase** (`print(p)` / `str(p)` / f-string all yield
+   the same line; contrast with a `__str__`-less class's default
+   `<__main__.WithoutStr object at 0x...>` repr; assert `str(p)` equals the
+   f-string rebuilt from the same fields) and **Section 6 processed-data
+   step** (`save_processed_data` + CSV read-back round-trip assert vs the
+   in-memory `Product`s). Executed outputs inspected: both cells print their
+   OK lines; notebook stays output-free in the repo.
+4. `.gitignore` + `data/processed/.gitkeep`: processed artifacts gitignored
+   (generated data — same convention as `TAI/outputs/`), folder tracked.
+5. `README.md`: documents the step, both artifacts, and the ignore choice.
+6. `tests/test_apds_modules.py`: `TestSaveProcessedData` — 6 tests (txt+csv
+   write, CSV header & total_value values, round-trip vs `Product`, empty
+   records, missing dir → `FileNotFoundError`, overwrite semantics).
+
+**Validation:** pytest **188 passed** (182+6) · execute_notebooks **23/23,
+0 cell errors** · verify_repo PASS · pip check clean · wikilinks 0 broken
+(1027) · CLI smoke run verified artifacts + gitignore behaviour.
+
+**Session note:** fresh sandbox — both repos re-cloned; master clone was
+behind (Sessions 1–3 only), the working branch `image-processing-data-science`
+carries Sessions 4+ history. Sandbox env rebuilt: `opencv-contrib-python-
+headless` 5.1.0 (ximgproc True) + `unidecode` installed; `pip check` clean.
+
 ## Remaining / blocked
-- 26 issues open: #2 (awaiting TP1 handout text — placeholders committed),
-  #8–#10, #12–#21, #23–#33, #35. Nothing blocked otherwise.
+- 25 issues open: #2 (awaiting TP1 handout text — placeholders committed),
+  #9, #10, #12–#21, #23–#33, #35. Nothing blocked otherwise.
 - Reminder for content sessions: the APDS-side issues rely on the article's
   transcription of the PDFs; keep implementations strictly within what the
   article + PDF-derived details state, and record any ambiguity as an issue
@@ -200,26 +235,29 @@ quiz validator 237 questions ALL VALID · all added snippets executed.
 
 ## Next session
 
-**Execute issue #8: "[stage-2][track-apds] APDS/02: processed-data step + Product.__str__ showcase in analysis.ipynb"** (next open in numeric order; small, well-scoped, pairs with the just-landed #7 streaming work).
+**Execute issue #9: "[stage-3][track-vault] Expand 03.1 stub into a real NumPy/Pandas/Matplotlib bridge note"** (next open in numeric order; starts the Stage 3/4 vault cluster).
 
 Continuation prompt (paste as-is):
 
 > You are continuing the APSD_TAI_LAB / Obsidian-vault curriculum work. Read
 > `AGENT.md` and `HANDOFF.md` in the APSD_TAI_LAB clone (branch
 > `image-processing-data-science` — ALL pushes go there only, never
-> master/main), then execute GitHub issue #8 (APDS/02: add the
-> data/processed/ workflow step and showcase `Product.__str__` in
-> `notebooks/analysis.ipynb`, per Tutorial 03 / the Phase-1 audit article §6A;
-> update the project README). Validate with `python -m pytest -q` (182
-> passing expected), `MPLBACKEND=Agg python scripts/execute_notebooks.py`
-> (23/23, 0 cell errors), `python scripts/verify_repo.py` (PASS). Then close
-> issue #8 via the REST API with an evidence comment, update `HANDOFF.md`
-> (session record + next issue), commit and push to
-> `image-processing-data-science` only, and stop. If #8 is already done, take
-> the next open issue in numeric order (#9, then #10, then #12+).
+> master/main), then execute GitHub issue #9 (vault `Data Science/03.1`
+> "Contextual Data Science Computing with NumPy and Pandas" is a ~23-line
+> stub: expand it into the real Stage 3 bridge note tying NumPy/Pandas/
+> Matplotlib (and pointers to Seaborn/Plotly) to Chapter 4 PDFs + TP4, per
+> the Phase-1 audit article §6B; cross-link `APDS/05`, `APDS/06`, and the
+> `TAI/00` NumPy foundations). Working spec: the audit article only (APDS
+> PDFs not in the repos); TAI side has real PDFs in `TAI/docs/`. Validate
+> with the vault wikilink checker
+> (`python scripts/check_wikilinks.py <vault-clone>`) plus a Python
+> execution pass of every code snippet you add. Then close issue #9 via the
+> REST API with an evidence comment, update `HANDOFF.md` (session record +
+> next issue), commit and push BOTH repos (vault note change goes to the
+> vault repo's `image-processing-data-science` branch), and stop. If #9 is
+> already done, take the next open issue in numeric order (#10, then #12+).
 
-Recommended ordering after #8: #9 (03.1 bridge) → #10 (03.5/10.5) → #12
-(Plotly/Basemap notes) — the Stage 3/4 vault cluster; then #13–#19 (Stage 4
-APDS labs) and #23–#29 (TAI sync + bug clusters). Keep 1–2 issues per
-session unless they are as small as #11.
+Recommended ordering after #9: #10 (03.5/10.5 chart gaps) → #12
+(Plotly/Basemap notes) — then #13–#19 (Stage 4 APDS labs) and #23–#29 (TAI
+sync + bug clusters). Keep 1–2 issues per session.
 
