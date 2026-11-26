@@ -7,7 +7,7 @@ project paradigm.
 
 ```
 APSD_TAI_LAB/
-├── APDS/            # 8 numbered data-science projects (see APDS/README.md)
+├── APDS/            # 9 numbered data-science projects (see APDS/README.md)
 ├── TAI/             # TP1 & TP2 image-processing labs (see TAI/README.md)
 ├── tests/           # pytest suite covering both tracks
 ├── scripts/         # repository helper scripts

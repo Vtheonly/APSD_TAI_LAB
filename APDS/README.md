@@ -1,9 +1,9 @@
 # APDS — Advanced Python & Data Science Coursework
 
-This folder contains the **APDS coursework track**: nine self-contained,
+This folder contains the **APDS coursework track**: ten self-contained,
 numbered projects covering the full data-science workflow with Python —
-from the Chapter 1 theory exercises to the end-to-end preprocessing and
-modeling pipeline.
+from the Chapter 1 theory exercises to the exploratory iris analysis and the
+end-to-end preprocessing and modeling pipeline.
 
 ## Projects
 
@@ -18,6 +18,7 @@ modeling pipeline.
 | 06 | `06_Hospital_Department_Analytics` | pandas indexing, risk scoring, pivots | `notebooks/01_hospital_indexing_and_slicing.ipynb`, `notebooks/02_hospital_risk_and_pivot_analytics.ipynb` |
 | 07 | `07_Monthly_Sales_Forecasting` | time series, feature engineering, visualization | `notebook.ipynb`, `utils.py` |
 | 08 | `08_Data_Preprocessing_and_Modeling` | cleaning, encoding, scaling, scikit-learn pipelines | `notebooks/01_medical_preprocessing_walkthrough.ipynb`, `notebooks/02_titanic_end_to_end_pipeline.ipynb` |
+| 09 | `09_Iris_Exploratory_Data_Analysis` | structure, profiles, correlation twist, separability rules, pair grid | `notebooks/01_iris_eda.ipynb` |
 
 ## Conventions
 
