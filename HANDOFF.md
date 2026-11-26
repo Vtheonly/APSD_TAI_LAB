@@ -275,7 +275,7 @@ Vault commits since Session 4:
 - `03.1` Section 8 maps Exercise 04 to `APDS/06/notebooks/03_hospital_matplotlib_vs_seaborn.ipynb`, which only
   exists once #15 is done.
 
-**Helpers (outside the repos, under `/home/z/my-project/scripts/`)**: `nbedit.py` (output-free notebook editing),
+**Helpers (outside the repos, in the session scripts folder)**: `nbedit.py` (output-free notebook editing),
 `seal_issue.py` (validate -> commit -> push to `image-processing-data-science` -> close with evidence; placeholders
 in `work/close_N.md`), `vault_lint.py`, `check_anchors.py`, `vault_exec.py`, `gh.py`, `verify_plotly_claims*.py`.
 If the scripts are gone, the continuation prompt below describes each step without them.
@@ -300,15 +300,15 @@ If the scripts are gone, the continuation prompt below describes each step witho
 Open issues now: #2, #15, #16, #17, #18, #19, #20, #21, #23, #24, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
 
 **Continuation prompt (paste as the first message):**
-> Repositories: `APSD_TAI_LAB` clone `/home/z/my-project/work/APSD_TAI_LAB` (branch `work-branch`, pushes to
-> `origin/image-processing-data-science` only) and vault clone `/home/z/my-project/work/vault` (branch
-> `image-processing-data-science`). Python: `/home/z/.venv/bin/python`. Read `AGENT.md` and this file first.
+> Repositories: the lab clone (branch `work-branch`, pushes to
+> `origin/image-processing-data-science` only) and the vault clone at `../vault` (branch
+> `image-processing-data-science`). Python: the `.venv` interpreter. Read `AGENT.md` and this file first.
 > Work the GitHub issues #15 to #19 in order; for each one: verify against the sources, edit through a
-> persisted script under `/home/z/my-project/scripts/`, keep every notebook output-free, validate (`pip check`,
+> persisted script under `scripts/` (session helpers, outside both repos), keep every notebook output-free, validate (`pip check`,
 > `python -m pytest -q`, `MPLBACKEND=Agg python scripts/execute_notebooks.py`, `python scripts/verify_repo.py`,
-> `python scripts/check_wikilinks.py /home/z/my-project/work/vault`), commit and push to
+> `python scripts/check_wikilinks.py ../vault`), commit and push to
 > `image-processing-data-science`, close the issue with an evidence comment, then update this file.
-> If `/home/z/my-project/scripts/issue13_gen.py` and `issue14_gen.py` exist, #13 and #14 are one command each
+> If the session helper scripts (`issue13_gen.py`, `seal_issue.py`, ...) exist, #13 and #14 are one command each
 > (generator, then `seal_issue.py`); otherwise rebuild them from the issue text and the "Prepared" notes above.
 > Remaining after them: #15 new `APDS/06/notebooks/03_hospital_matplotlib_vs_seaborn.ipynb` (9 plots: 4 Matplotlib,
 > 5 Seaborn, render each to memory and check it is non-blank), #16 sales quarterly totals + insights + annotated
