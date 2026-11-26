@@ -225,11 +225,11 @@ behind (Sessions 1–3 only), the working branch `image-processing-data-science`
 carries Sessions 4+ history. Sandbox env rebuilt: `opencv-contrib-python-
 headless` 5.1.0 (ximgproc True) + `unidecode` installed; `pip check` clean.
 
-## Session 6 — issues #9, #10, #12, #13, #14 (user directive: "Do 10 whole issues")
+## Session 6 — issues #9, #10, #12-#19 + remote re-clone verification (user directive: "Do 10 whole issues")
 
 **User directive (this session):** complete 10 whole issues in one session — #9, #10, #12-#19 — overriding the
-1-2 issues default of `AGENT.md`. The default itself is unchanged. The sandbox time budget ended the session
-after the issues closed above; what is prepared for the rest is listed under "Prepared, not applied".
+1-2 issues default of `AGENT.md`. The default itself is unchanged. The directive was completed: #15-#19 were implemented, sealed and closed in the
+same session (see "Completed this session" below); #2 stays blocked as beforelied".
 
 **Completed work**
 - #9 (vault `b04083f`): `03.1` expanded from a stub into the NumPy / Pandas / Matplotlib bridge note (346 lines).
@@ -280,10 +280,19 @@ Vault commits since Session 4:
 in `work/close_N.md`), `vault_lint.py`, `check_anchors.py`, `vault_exec.py`, `gh.py`, `verify_plotly_claims*.py`.
 If the scripts are gone, the continuation prompt below describes each step without them.
 
-**Prepared, not applied**
-- `issue13_gen.py` - APPLIED and sealed
-- `issue14_gen.py` - APPLIED and sealed
-- #15-#19: not started as files. Plans are in the issue texts (`work/issues_9_to_19.txt`) and the continuation prompt.
+**Completed this session (all sealed with evidence and closed)**
+- `issue15_gen.py` - APPLIED: APDS/06/03 Exercise 04 notebook (9 audited charts) + HANDOFF path scrub -> 5c912bd (#15)
+- `issue16_gen.py` - APPLIED: APDS/07 quarterly totals, printed insights, best-month annotation, alias table, 3 conclusions -> de5bfc1 (#16)
+- `issue17_gen.py` - APPLIED: APDS/08/01 four TP5 Ex01 Task 2 charts (pixel-audited) + cap-vs-remove discussion -> 19245b0 (#17)
+- `issue18_gen.py` - APPLIED: APDS/08/02 titanic EDA, name-column quirk, skew, scaled-vs-unscaled, confusion matrices, justification -> 0efca31 (#18)
+- `issue19_gen.py` - APPLIED: new APDS/09 iris EDA project (README + notebook + index row 09) -> 4ec01df (#19)
+- Remote verified by fresh re-clone mid-session: lab branch tip and vault tip byte-identical to the local clones;
+  only untracked runtime artifacts differ (data/, __pycache__, TAI/outputs).
+- Environment repaired mid-session: opencv-contrib-python-headless restored (numpy pinned back to 2.1.3 after a
+  transient 2.5.5 install), `pip check` clean; HANDOFF.md continuation prompt scrubbed of hardcoded home paths
+  (the repo hygiene test rejects them).
+- Full-suite final state: 25 tracked notebooks, all executed with 0 cell errors; 188 tests passed; all hygiene
+  and integrity checks passed; vault wikilinks 1095 checked, 0 broken.
 
 ## Remaining / blocked
 **Session 6 update:** closed #9, #10, #12, #13, #14; still open in the 9-19 range: #15, #16, #17, #18, #19. Open issues overall: 20.
@@ -310,9 +319,8 @@ Open issues now: #2, #15, #16, #17, #18, #19, #20, #21, #23, #24, #25, #26, #27,
 > `image-processing-data-science`, close the issue with an evidence comment, then update this file.
 > If the session helper scripts (`issue13_gen.py`, `seal_issue.py`, ...) exist, #13 and #14 are one command each
 > (generator, then `seal_issue.py`); otherwise rebuild them from the issue text and the "Prepared" notes above.
-> Remaining after them: #15 new `APDS/06/notebooks/03_hospital_matplotlib_vs_seaborn.ipynb` (9 plots: 4 Matplotlib,
-> 5 Seaborn, render each to memory and check it is non-blank), #16 sales quarterly totals + insights + annotated
-> stacked bar + 3 conclusions + alias table (`MoM_Growth` vs `Month_over_Month_Growth` / `MoM_Growth_Pct`),
-> #17 four Seaborn medical plots + IQR-removal-vs-capping discussion, #18 Titanic EDA + `name`-title quirk +
-> `fare` skew + unscaled-vs-scaled + confusion matrix + LR-vs-KNN justification, #19 new `APDS/09` iris EDA
-> (README + notebook + index row 09).
+> #15-#19 are DONE and closed (see "Completed this session" above). The next issues to work are the
+> stage-4/5 vault ones: #20 (05.1 Chapter 6 EDA coverage + link APDS/09), #21 (04.1-04.6 Chapter 5
+> content + sync with APDS/08), then #23/#24 (TAI vault treatments). #2 remains blocked. Follow the
+> same per-issue loop: verify against sources, edit through a persisted script, validate, commit and
+> push to `image-processing-data-science`, close with evidence, update this file.
