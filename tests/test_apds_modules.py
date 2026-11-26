@@ -83,6 +83,53 @@ class TestProduct:
         assert product_mod.Product("X", 10.0, 0).total_value() == 0.0
 
 
+class TestSaveProcessedData:
+    RECORDS = [("Laptop", 1000.0, 3), ("Phone", 500.0, 5), ("Tablet", 700.0, 2)]
+
+    def test_writes_cleaned_txt_and_csv(self, tmp_path):
+        txt_path, csv_path = helpers.save_processed_data(self.RECORDS, tmp_path)
+        assert txt_path == tmp_path / "cleaned_data.txt"
+        assert csv_path == tmp_path / "products_summary.csv"
+        txt = txt_path.read_text(encoding="utf-8").splitlines()
+        assert txt == ["Laptop,1000.0,3", "Phone,500.0,5", "Tablet,700.0,2"]
+
+    def test_csv_has_header_and_total_value(self, tmp_path):
+        _, csv_path = helpers.save_processed_data(self.RECORDS, tmp_path)
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert rows[0] == {
+            "name": "Laptop", "price": "1000.0", "quantity": "3", "total_value": "3000.0",
+        }
+        assert [float(r["total_value"]) for r in rows] == [3000.0, 2500.0, 1400.0]
+
+    def test_round_trip_matches_products(self, tmp_path):
+        _, csv_path = helpers.save_processed_data(self.RECORDS, tmp_path)
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        for row, (name, price, qty) in zip(rows, self.RECORDS):
+            prod = product_mod.Product(name, price, qty)
+            assert (row["name"], float(row["price"]), int(row["quantity"])) == (name, price, qty)
+            assert float(row["total_value"]) == prod.total_value()
+
+    def test_empty_records(self, tmp_path):
+        txt_path, csv_path = helpers.save_processed_data([], tmp_path)
+        assert txt_path.read_text(encoding="utf-8") == ""
+        assert csv_path.read_text(encoding="utf-8") == "name,price,quantity,total_value\n"
+
+    def test_creates_parentless_dir_is_caller_duty(self, tmp_path):
+        # save_processed_data writes inside the given dir; directory creation
+        # is the caller's job (script/notebook use mkdir(parents=True)). A
+        # missing dir must fail loudly rather than silently create it.
+        missing = tmp_path / "no_such_dir"
+        with pytest.raises(FileNotFoundError):
+            helpers.save_processed_data(self.RECORDS, missing)
+
+    def test_overwrites_previous_artifact(self, tmp_path):
+        helpers.save_processed_data(self.RECORDS, tmp_path)
+        txt_path, _ = helpers.save_processed_data([("Camera", 400.0, 1)], tmp_path)
+        assert txt_path.read_text(encoding="utf-8").splitlines() == ["Camera,400.0,1"]
+
+
 # ---------------------------------------------------------------------------
 # 03_Student_Simulation_Analytics
 # ---------------------------------------------------------------------------

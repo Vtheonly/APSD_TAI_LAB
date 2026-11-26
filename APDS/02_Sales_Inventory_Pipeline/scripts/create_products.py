@@ -7,7 +7,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
-from utils import clean_lines, parse_products, Product
+from utils import clean_lines, parse_products, save_processed_data, Product
 
 
 def main():
@@ -23,6 +23,14 @@ def main():
 
     cleaned = clean_lines(raw_lines)
     records = parse_products(cleaned)
+
+    # Persist the processed inventory under data/processed/ (cleaned text +
+    # CSV summary with the computed total value per product).
+    processed_dir = PROJECT_DIR / "data" / "processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    txt_path, csv_path = save_processed_data(records, processed_dir)
+    print(f"[Processed] Cleaned data saved to: {txt_path}")
+    print(f"[Processed] CSV summary saved to: {csv_path}")
 
     products = []
     total_revenue = 0.0
