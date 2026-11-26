@@ -296,14 +296,14 @@ If the scripts are gone, the continuation prompt below describes each step witho
   comment rather than guessing.
 
 ## Next session
-**Continue the "10 whole issues" directive with issue #2** (next open in numeric order), then #14-#19 in order.
+**Continue the "10 whole issues" directive with issue #15** (next open in the 9-19 range; #2 stays blocked awaiting the TP1 handout text), then #16-#19 in order.
 Open issues now: #2, #15, #16, #17, #18, #19, #20, #21, #23, #24, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
 
 **Continuation prompt (paste as the first message):**
 > Repositories: `APSD_TAI_LAB` clone `/home/z/my-project/work/APSD_TAI_LAB` (branch `work-branch`, pushes to
 > `origin/image-processing-data-science` only) and vault clone `/home/z/my-project/work/vault` (branch
 > `image-processing-data-science`). Python: `/home/z/.venv/bin/python`. Read `AGENT.md` and this file first.
-> Work the GitHub issues #{next_issue} to #19 in order; for each one: verify against the sources, edit through a
+> Work the GitHub issues #15 to #19 in order; for each one: verify against the sources, edit through a
 > persisted script under `/home/z/my-project/scripts/`, keep every notebook output-free, validate (`pip check`,
 > `python -m pytest -q`, `MPLBACKEND=Agg python scripts/execute_notebooks.py`, `python scripts/verify_repo.py`,
 > `python scripts/check_wikilinks.py /home/z/my-project/work/vault`), commit and push to
