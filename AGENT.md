@@ -9,14 +9,21 @@ next issue to execute.
 
 | Repo | Role | Branch |
 | --- | --- | --- |
-| `Vtheonly/APSD_TAI_LAB` | Code & labs: `APDS/` (data science), `TAI/` (image processing), `TAI/utils/`, `TAI/docs/`, `TAI/images/`, `tests/`, `scripts/` | `image-processing-data-science` |
-| `Vtheonly/UMBB-Master-1` | Obsidian vault: `Data Science/`, `TAI/` (formerly `Image Processing/`), `Libraries/`, `Quiz/` | `image-processing-data-science` |
+| `Vtheonly/APSD_TAI_LAB` | Code & labs: `APDS/` (data science), `TAI/` (image processing), `TAI/utils/`, `TAI/docs/`, `TAI/images/`, `tests/`, `scripts/` | `main` |
+| `Vtheonly/UMBB-Master-1` | Obsidian vault: `Data Science/`, `Image Processing/` (formerly `TAI/`), `Libraries/`, `Quiz/` | `image-processing-data-science` |
 
-- **Branch policy (Session 4+):** ALL pushes go ONLY to the
-  `image-processing-data-science` branch of each repository — NEVER to
-  `master`/`main`. `APSD_TAI_LAB`'s `master` still carries the Sessions 1–3
-  history; the working branch was cut from it (at `c318552`) and is now the
-  head of all further work.
+- **Branch topology (post-consolidation, user directive):** the lab repository
+  was consolidated into a SINGLE `main` branch (old `master` and
+  `image-processing-data-science` branches deleted after verifying they were
+  fully contained in `main`; default branch is `main`). ALL lab pushes now go
+  to `main`. The vault repository keeps its subject branches — push ONLY to
+  its `image-processing-data-science` branch; its `main` stays empty, and
+  `networking`/`databases` are untouched. Never merge the two repositories.
+- **Vault folder rename (from the consolidation):** the vault's `TAI/` track
+  folder is now `Image Processing/` (the rename was done on the old `main`
+  and merged into `image-processing-data-science`). Vault note paths in
+  issues that say `TAI/09.x` etc. now live under `Image Processing/09.x`;
+  wikilinks resolve by filename and were verified unaffected (0 broken).
 - Keep the two clones side by side (this repo and the vault checkout of
   `UMBB-Master-1` branch `image-processing-data-science`). Push URLs embed the
   PAT (already configured); never write the PAT into any committed file.
@@ -86,7 +93,7 @@ retired as a competing syllabus and repurposed as a stage-indexed API lookup.
 ## 4. French TAI symbol & naming rules
 
 Preserve the instructor's exact function/variable names in `TAI/` and vault
-`TAI/09.*` notes: `im1`, `imb1`, `seuillage_fixe_perso`, `calcul_histogramme_perso`,
+`Image Processing/09.*` notes (folder renamed from `TAI/` in the vault): `im1`, `imb1`, `seuillage_fixe_perso`, `calcul_histogramme_perso`,
 `filtreMoyenne`, `filtreMedian`, `filtrebilateral`, `filtreNagao`,
 `filtreMoyenneAdaptative`, `filtreMoyenne_separable`, `expansionHisto`,
 `egalisationHistoGlobale`, `egalisationAHE`, `egalisationCLAHE`,

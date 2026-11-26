@@ -294,33 +294,119 @@ If the scripts are gone, the continuation prompt below describes each step witho
 - Full-suite final state: 25 tracked notebooks, all executed with 0 cell errors; 188 tests passed; all hygiene
   and integrity checks passed; vault wikilinks 1095 checked, 0 broken.
 
-## Remaining / blocked
-**Session 6 update:** closed #9, #10, #12, #13, #14; still open in the 9-19 range: #15, #16, #17, #18, #19. Open issues overall: 20.
+## Session 7 — issues #20, #21, #23 (stage-4 vault sweep + Nagao geometry fix; post-consolidation topology)
 
-- 25 issues open: #2 (awaiting TP1 handout text — placeholders committed),
-  #9, #10, #12–#21, #23–#33, #35. Nothing blocked otherwise.
-- Reminder for content sessions: the APDS-side issues rely on the article's
-  transcription of the PDFs; keep implementations strictly within what the
-  article + PDF-derived details state, and record any ambiguity as an issue
-  comment rather than guessing.
+**Context:** the session before this one (outside the issue loop) consolidated
+both repositories per user directive: `APSD_TAI_LAB` now has a SINGLE `main`
+branch (old `master` + `image-processing-data-science` deleted, both fully
+contained in `main`), and the vault's `main` was emptied with all content
+preserved on `image-processing-data-science` (which also adopted the
+`TAI/` → `Image Processing/` folder rename). AGENT.md §1/§4 updated to match.
+
+**Completed work** (vault commits `0b5ac54`, `b4362a4`, `7dd4ccf` on
+`image-processing-data-science`; issues #20/#21/#23 closed with evidence
+comments; user directive: "close more issues" — three closed):
+
+1. **#20 — 05.1 complete Ch6 EDA summary:** cat-categorical analysis
+   (`pd.cut` + `pd.crosstab` + heatmap, normalize reading rules), multivariate
+   views (`pairplot`/`FacetGrid`/grouped bar), skew/kurtosis
+   Recommended-Actions table (6 readings → actions), instructor's Pearson
+   Cov/σ notation (identity proven by executed snippet: `x.cov(y)/(x.std()*y.std()) == x.corr(y)`),
+   APDS/09 iris project cross-reference with section-by-section concept map.
+2. **#21 — 04.1–04.6 complete Ch5 coverage:** 04.1 missingness audit
+   (`values.any()`/%-table/`sns.heatmap(df.isnull())`) + `ffill`/`bfill` +
+   executed SimpleImputer-vs-KNNImputer comparison; 04.2 4-panel outlier
+   treatment figure + `scipy.stats.zscore` scatter + duplicates
+   (`duplicated(subset=)`) + type validation (`to_numeric`/`to_datetime`/
+   `astype("category")`/NaT/NaN) + p.20 `median_income=.mean()` quirk callout;
+   04.3 `LabelEncoder` + regex cleaning + `unidecode` + p.22
+   unidecode-after-regex quirk (both orders executed: `['Stif','Bjaa']` vs
+   `['Setif','Bejaia']`); 04.4 MinMax/Robust/Normalizer(l1/l2) + L1-diamond
+   vs L2-circle annotated scatter; 04.5/04.6 Lab Companion sections synced
+   with the APDS/08 notebooks (all quoted numbers verified against them or
+   recomputed).
+3. **#23 — Nagao 3x3 centre clique everywhere + dedup:** 02.6 rewritten as
+   THE canonical concept note (3x3 centre 9 px + 8 peripheral 7-px regions,
+   |R_k| formulas, 5x5/7x7/9x9 sizing table [9,7×8]/[9,14×4,12×4]/
+   [25,23×4,19×4], course-wording callout); 09.5 rewritten as the lab
+   walkthrough with `build_nagao_masks`+`filtreNagao` embedded
+   byte-identical to `TAI/utils/filters.py`; Libraries/26 geometry fixed +
+   worked-example R0 row recomputed (n=9, 121.111, 1916.765) + timings
+   re-measured (A 6.97/B 0.104/C 0.010/D 0.046 s) + §2.1/§3 de-duplicated
+   into links; Libraries/20 Nagao section reduced to positioning + links
+   (divergent inline implementation removed); 26.5/20.5/Quiz-TAI-02 wording
+   fixes. Acceptance greps clean (0 five-px-cross matches vault-wide).
+
+**Validation:** all python blocks of every touched note executed in reading
+order (0 errors; 04.6's full titanic pipeline re-printed the companion's
+exact accuracies 0.8212/0.8045); quiz validator 30/30 ALL VALID; wikilinks
+164 notes / 1118 links / 0 broken (checked after each commit).
+
+**New verified facts / lessons (Session 7)**
+- Canonical `filtreNagao` uses `cv2.BORDER_REFLECT`; the vault's four
+  reference implementations use `BORDER_REFLECT_101`: pixel-identical on the
+  interior, rim-only difference (91.4% overall / 100% interior on 64x64
+  random, gaps to 141 levels). Documented in 09.5 + Libraries/26 §7.
+- The Libraries/26 §9 rng(0) tie example survives the 3x3-centre change
+  VERBATIM (same pixel (50,56), same R3/R7 variances, same outputs 121/143);
+  256x256 rates: A vs C 2/65536 px, A vs B 1, A vs D 0.
+- Draft factual errors caught by the verify-before-commit loop this session:
+  fare kurtosis is 33.4 (not 33.2); the within-setosa +0.74 is the
+  sepal_length~sepal_width pair (pooled −0.12), NOT sepal_width~petal_length
+  (that one is −0.43 pooled → +0.18 within); titanic women 74.2%/men 18.9%
+  (not 75.3/20.5). Always recompute before quoting.
+- seaborn `load_dataset('titanic')` works in this sandbox (network OK);
+  `sns.load_dataset('iris')` was NOT used — the 05.1/09.5 snippets load iris
+  via sklearn's local `load_iris()` (no network, mirrors APDS/09).
+- A dict-built `None` is `NaN` for `isnull()`, but the string `"None"` from a
+  CSV is invisible until text normalization (documented in 04.1).
+- The `.5` sheets' "Motor-Recall Code Templates" blocks are fragmentary by
+  design (placeholder variables like `py`/`px`) — they do not execute as
+  whole blocks; their factual claims must be re-verified by script instead
+  (26.5's were). Full `.5` code hygiene remains #33's scope.
+- Session helpers live in the agent workspace scripts folder:
+  `vault_exec.py` (execute every python block of a vault note in reading
+  order, `display` shimmed), `close_issueN.py` pattern (REST comment+close;
+  token in `repos/.token`), `verify_nagao_23*.py`, `issue2*_gen*.py`.
+
+## Remaining / blocked
+- 12 issues open: #2 (awaiting TP1 handout text — placeholders committed),
+  #24 (Bilateral merge — NEXT), #25 (Contour Stencils 12-stencil fix),
+  #26–#29 (vault 09.x sync with TAI labs), #30–#32 (.5 exam-prep),
+  #33 (.5 sweep + phantom refs), #35 (roadmap unification). Nothing else
+  blocked.
+- Tracker gap (carried from Session 6, still unopened): no issue covers
+  syncing vault tutorials `03.2`–`03.5` with the updated APDS/05–07
+  notebooks (column names, `>= 15` vs `> 15`). Fold into a future session or
+  open a new issue.
+- #24 note: the issue text says "align with `filtrebilateral` (range LUT
+  optimization)" but the ACTUAL `TAI/utils/filters.py:filtrebilateral` uses
+  per-shift vectorized `math.exp` (no LUT) — align to the real code, and
+  reconcile with whatever `Libraries/25` teaches about LUTs (keep the LUT as
+  an optimization discussion if it is presented as such, clearly secondary
+  to the canonical form).
 
 ## Next session
-**Continue the "10 whole issues" directive with issue #15** (next open in the 9-19 range; #2 stays blocked awaiting the TP1 handout text), then #16-#19 in order.
-Open issues now: #2, #15, #16, #17, #18, #19, #20, #21, #23, #24, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
+**Work issue #24** (Bilateral: merge 02.7 + Libraries/20 + 25 + .5 into one
+canonical treatment, aligned with the real `filtrebilateral`), then #25
+(Contour Stencils 12-stencil correction), then #26–#29 in order.
+Open issues now: #2, #24, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
 
 **Continuation prompt (paste as the first message):**
-> Repositories: the lab clone (branch `work-branch`, pushes to
-> `origin/image-processing-data-science` only) and the vault clone at `../vault` (branch
-> `image-processing-data-science`). Python: the `.venv` interpreter. Read `AGENT.md` and this file first.
-> Work the GitHub issues #15 to #19 in order; for each one: verify against the sources, edit through a
-> persisted script under `scripts/` (session helpers, outside both repos), keep every notebook output-free, validate (`pip check`,
-> `python -m pytest -q`, `MPLBACKEND=Agg python scripts/execute_notebooks.py`, `python scripts/verify_repo.py`,
-> `python scripts/check_wikilinks.py ../vault`), commit and push to
-> `image-processing-data-science`, close the issue with an evidence comment, then update this file.
-> If the session helper scripts (`issue13_gen.py`, `seal_issue.py`, ...) exist, #13 and #14 are one command each
-> (generator, then `seal_issue.py`); otherwise rebuild them from the issue text and the "Prepared" notes above.
-> #15-#19 are DONE and closed (see "Completed this session" above). The next issues to work are the
-> stage-4/5 vault ones: #20 (05.1 Chapter 6 EDA coverage + link APDS/09), #21 (04.1-04.6 Chapter 5
-> content + sync with APDS/08), then #23/#24 (TAI vault treatments). #2 remains blocked. Follow the
-> same per-issue loop: verify against sources, edit through a persisted script, validate, commit and
-> push to `image-processing-data-science`, close with evidence, update this file.
+> Repositories: the lab clone (branch `main` — the only branch, post
+> consolidation) and the vault clone at `../umbb_master1` (branch
+> `image-processing-data-science`; its `main` stays empty; the vault's
+> `TAI/` folder is now `Image Processing/`). Python: system interpreter
+> (opencv-contrib-headless, sklearn, seaborn, plotly, unidecode installed).
+> Read `AGENT.md` and this file first. Work the GitHub issues #24, #25, ...
+> in order (REST for issues; token in `repos/.token`, rebuild from the push
+> URL if missing); for each one: verify against the sources (`TAI/docs/`
+> PDFs, `TAI/utils/*.py`, the lab notebooks), edit through a persisted
+> script under the session scripts folder (outside both repos), execute every
+> python block you add or touch (`vault_exec.py`), validate
+> (`python scripts/check_wikilinks.py ../umbb_master1`, quiz validator for
+> quiz edits, lab suite only if lab files change), commit and push (vault →
+> `image-processing-data-science`, lab → `main`), close the issue with an
+> evidence comment, then update this file. #24 caution: the real
+> `filtrebilateral` has NO range LUT — align to the code, not the issue's
+> parenthetical.
