@@ -225,7 +225,69 @@ behind (Sessions 1–3 only), the working branch `image-processing-data-science`
 carries Sessions 4+ history. Sandbox env rebuilt: `opencv-contrib-python-
 headless` 5.1.0 (ximgproc True) + `unidecode` installed; `pip check` clean.
 
+## Session 6 — issues #9, #10, #11, #12, #13, #14 (user directive: "Do 10 whole issues")
+
+**User directive (this session):** complete 10 whole issues in one session — #9, #10, #12-#19 — overriding the
+1-2 issues default of `AGENT.md`. The default itself is unchanged. The sandbox time budget ended the session
+after the issues closed above; what is prepared for the rest is listed under "Prepared, not applied".
+
+**Completed work**
+- #9 (vault `b04083f`): `03.1` expanded from a stub into the NumPy / Pandas / Matplotlib bridge note (346 lines).
+- #10 (vault `d99bd5e`): `Libraries/03.5` (562 lines) and `Libraries/10.5` (566 lines) rewritten — Chapter 4 Part 2
+  coverage, Stage 3A (data plots) separated from Stage 3B (image rendering), 8 drills each with an executed key.
+  The commit message swaps the two line counts (cosmetic). Scope notes left on #31 and #32.
+- #12 (vault `5a8980a`): new `Libraries/10.6. Plotly Express and Basemap - Interactive and Geographic Figures`
+  (389 lines, 14/14 python blocks executed) + links from both roadmaps, `10.5`, `03.5`, `03.1`.
+- #13, #14: see the lab commits below; each was sealed by
+  `scripts/seal_issue.py` (validation -> commit -> push -> close with the real outputs as evidence).
+
+Lab commits since the Session 5 handoff:
+  - `7302fef APDS/06/02: retitle Ex 03 Part 2, Tasks 3/4/5/9/10, handout-threshold scale quirk (#14)`
+  - `7c407e8 APDS/05/02: Task 1 mean_per_student + 3 Extra Practice tasks, >= 15 vs > 15 boundary (#13)`
+Vault commits since Session 4:
+  - `5a8980a Libraries/10.6: Plotly Express (executed) + Basemap (conceptual); links from roadmaps, 10.5, 03.5, 03.1 (#12)`
+  - `d99bd5e Libraries/03.5 + 10.5: Chapter 4 Part 2 coverage with Stage 3A/3B separation and drills (#10)`
+  - `b04083f 03.1: expand the stub into the NumPy/Pandas/Matplotlib bridge note (#9)`
+
+**Validation**
+- End-of-session lab run: not re-run as a whole suite in this pass (sandbox time budget); the per-issue seals are the evidence.
+- Vault wikilinks: notes indexed: 163  wikilinks checked: 1095 | BROKEN WIKILINKS: 0.
+- Per-issue evidence: the closing comment of each issue (pytest, notebook execution, `verify_repo`, lint).
+
+**New verified facts / lessons (Session 6)**
+- Plotly 6.5.2: `px.bar` / `px.scatter` / `px.line` return one trace (`bar` / `scatter`; line mode `lines` or
+  `lines+markers`); `hover_data` fills `trace.customdata` and extends `hovertemplate` with `%{customdata[i]}`;
+  no `data_frame` -> ValueError; `ax=`, `hoverdata=`, `marker=` -> TypeError; `fig.set_title` / `fig.savefig` ->
+  AttributeError; `update_layout(titel=)` -> ValueError; `px.bar(df, x=)` without `y` counts rows (y title `count`);
+  string categories keep their order of appearance; `write_html` = 4,847,253 bytes vs `include_plotlyjs="cdn"`
+  = 8,442 bytes; `to_image` raises `RuntimeError: Kaleido requires Google Chrome to be installed`.
+- Basemap is NOT installed and cartopy is NOT installed; nothing was added. Basemap API signatures were taken
+  from `matplotlib.org/basemap/stable/api/basemap_api.html` (release 2.0.0). Upstream today: the GitHub README
+  carries no deprecation sentence, PyPI lists `basemap` 2.0.0 (numpy, matplotlib, pyproj, pyshp, basemap-data).
+  The deprecation is the COURSE's position (Chapter 4 Part 2, p. 20, per the audit transcription) — say so.
+- City coordinates used in 10.6 come from the Open-Meteo geocoding API (Algiers 36.73 N 3.09 E, Oran 35.70 N
+  0.64 W, Annaba 36.90 N 7.77 E).
+- Lesson: a file size measured on one figure is not valid for another — the first table quoted ~10 kB for a PNG
+  that is 31,194 bytes on the 12-month series. Read the block output before writing the number.
+- Lesson: `fig.show()` returns at once in this sandbox (no browser), so executed vault blocks may keep it.
+- Tracker gap: no open issue covers syncing the vault tutorials `03.2`-`03.5` with the updated `APDS/05`-`07`
+  notebooks (column names, `>= 15` vs `> 15`). Open an issue or fold it into #20+.
+- `03.1` Section 8 maps Exercise 04 to `APDS/06/notebooks/03_hospital_matplotlib_vs_seaborn.ipynb`, which only
+  exists once #15 is done.
+
+**Helpers (outside the repos, under `/home/z/my-project/scripts/`)**: `nbedit.py` (output-free notebook editing),
+`seal_issue.py` (validate -> commit -> push to `image-processing-data-science` -> close with evidence; placeholders
+in `work/close_N.md`), `vault_lint.py`, `check_anchors.py`, `vault_exec.py`, `gh.py`, `verify_plotly_claims*.py`.
+If the scripts are gone, the continuation prompt below describes each step without them.
+
+**Prepared, not applied**
+- `issue13_gen.py` - APPLIED and sealed
+- `issue14_gen.py` - APPLIED and sealed
+- #15-#19: not started as files. Plans are in the issue texts (`work/issues_9_to_19.txt`) and the continuation prompt.
+
 ## Remaining / blocked
+**Session 6 update:** closed #9, #10, #11, #12, #13, #14; still open in the 9-19 range: #15, #16, #17, #18, #19. Open issues overall: 20.
+
 - 25 issues open: #2 (awaiting TP1 handout text — placeholders committed),
   #9, #10, #12–#21, #23–#33, #35. Nothing blocked otherwise.
 - Reminder for content sessions: the APDS-side issues rely on the article's
@@ -234,30 +296,23 @@ headless` 5.1.0 (ximgproc True) + `unidecode` installed; `pip check` clean.
   comment rather than guessing.
 
 ## Next session
+**Continue the "10 whole issues" directive with issue #2** (next open in numeric order), then #14-#19 in order.
+Open issues now: #2, #15, #16, #17, #18, #19, #20, #21, #23, #24, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
 
-**Execute issue #9: "[stage-3][track-vault] Expand 03.1 stub into a real NumPy/Pandas/Matplotlib bridge note"** (next open in numeric order; starts the Stage 3/4 vault cluster).
-
-Continuation prompt (paste as-is):
-
-> You are continuing the APSD_TAI_LAB / Obsidian-vault curriculum work. Read
-> `AGENT.md` and `HANDOFF.md` in the APSD_TAI_LAB clone (branch
-> `image-processing-data-science` — ALL pushes go there only, never
-> master/main), then execute GitHub issue #9 (vault `Data Science/03.1`
-> "Contextual Data Science Computing with NumPy and Pandas" is a ~23-line
-> stub: expand it into the real Stage 3 bridge note tying NumPy/Pandas/
-> Matplotlib (and pointers to Seaborn/Plotly) to Chapter 4 PDFs + TP4, per
-> the Phase-1 audit article §6B; cross-link `APDS/05`, `APDS/06`, and the
-> `TAI/00` NumPy foundations). Working spec: the audit article only (APDS
-> PDFs not in the repos); TAI side has real PDFs in `TAI/docs/`. Validate
-> with the vault wikilink checker
-> (`python scripts/check_wikilinks.py <vault-clone>`) plus a Python
-> execution pass of every code snippet you add. Then close issue #9 via the
-> REST API with an evidence comment, update `HANDOFF.md` (session record +
-> next issue), commit and push BOTH repos (vault note change goes to the
-> vault repo's `image-processing-data-science` branch), and stop. If #9 is
-> already done, take the next open issue in numeric order (#10, then #12+).
-
-Recommended ordering after #9: #10 (03.5/10.5 chart gaps) → #12
-(Plotly/Basemap notes) — then #13–#19 (Stage 4 APDS labs) and #23–#29 (TAI
-sync + bug clusters). Keep 1–2 issues per session.
-
+**Continuation prompt (paste as the first message):**
+> Repositories: `APSD_TAI_LAB` clone `/home/z/my-project/work/APSD_TAI_LAB` (branch `work-branch`, pushes to
+> `origin/image-processing-data-science` only) and vault clone `/home/z/my-project/work/vault` (branch
+> `image-processing-data-science`). Python: `/home/z/.venv/bin/python`. Read `AGENT.md` and this file first.
+> Work the GitHub issues #{next_issue} to #19 in order; for each one: verify against the sources, edit through a
+> persisted script under `/home/z/my-project/scripts/`, keep every notebook output-free, validate (`pip check`,
+> `python -m pytest -q`, `MPLBACKEND=Agg python scripts/execute_notebooks.py`, `python scripts/verify_repo.py`,
+> `python scripts/check_wikilinks.py /home/z/my-project/work/vault`), commit and push to
+> `image-processing-data-science`, close the issue with an evidence comment, then update this file.
+> If `/home/z/my-project/scripts/issue13_gen.py` and `issue14_gen.py` exist, #13 and #14 are one command each
+> (generator, then `seal_issue.py`); otherwise rebuild them from the issue text and the "Prepared" notes above.
+> Remaining after them: #15 new `APDS/06/notebooks/03_hospital_matplotlib_vs_seaborn.ipynb` (9 plots: 4 Matplotlib,
+> 5 Seaborn, render each to memory and check it is non-blank), #16 sales quarterly totals + insights + annotated
+> stacked bar + 3 conclusions + alias table (`MoM_Growth` vs `Month_over_Month_Growth` / `MoM_Growth_Pct`),
+> #17 four Seaborn medical plots + IQR-removal-vs-capping discussion, #18 Titanic EDA + `name`-title quirk +
+> `fare` skew + unscaled-vs-scaled + confusion matrix + LR-vs-KNN justification, #19 new `APDS/09` iris EDA
+> (README + notebook + index row 09).
