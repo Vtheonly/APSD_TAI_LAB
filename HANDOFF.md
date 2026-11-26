@@ -225,7 +225,7 @@ behind (Sessions 1–3 only), the working branch `image-processing-data-science`
 carries Sessions 4+ history. Sandbox env rebuilt: `opencv-contrib-python-
 headless` 5.1.0 (ximgproc True) + `unidecode` installed; `pip check` clean.
 
-## Session 6 — issues #9, #10, #11, #12, #13, #14 (user directive: "Do 10 whole issues")
+## Session 6 — issues #9, #10, #12, #13, #14 (user directive: "Do 10 whole issues")
 
 **User directive (this session):** complete 10 whole issues in one session — #9, #10, #12-#19 — overriding the
 1-2 issues default of `AGENT.md`. The default itself is unchanged. The sandbox time budget ended the session
@@ -286,7 +286,7 @@ If the scripts are gone, the continuation prompt below describes each step witho
 - #15-#19: not started as files. Plans are in the issue texts (`work/issues_9_to_19.txt`) and the continuation prompt.
 
 ## Remaining / blocked
-**Session 6 update:** closed #9, #10, #11, #12, #13, #14; still open in the 9-19 range: #15, #16, #17, #18, #19. Open issues overall: 20.
+**Session 6 update:** closed #9, #10, #12, #13, #14; still open in the 9-19 range: #15, #16, #17, #18, #19. Open issues overall: 20.
 
 - 25 issues open: #2 (awaiting TP1 handout text — placeholders committed),
   #9, #10, #12–#21, #23–#33, #35. Nothing blocked otherwise.
