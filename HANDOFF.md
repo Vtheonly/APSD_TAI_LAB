@@ -375,7 +375,7 @@ exact accuracies 0.8212/0.8045); quiz validator 30/30 ALL VALID; wikilinks
 **Context:** continuation session; both repos cloned fresh (lab `main`,
 vault `image-processing-data-science`), PAT re-embedded in the vault push
 URL (`git remote set-url`). `gh` still absent — REST via `urllib` helper
-scripts under `/home/z/my-project/scripts/`. Open issues at start: #2, #24,
+scripts under the workspace `scripts/` folder. Open issues at start: #2, #24,
 #25–#29, #30–#33, #35.
 
 **Completed work** (vault commit `c0ffcde`; issue #24 closed with evidence
@@ -447,7 +447,7 @@ touched (lab suite unaffected).
   payloads — always re-read files after writing; (c) multi-pattern `rg`
   sweeps over the vault can hit the 2-minute timeout — use single-pass
   Python scanners instead.
-- Reusable session helpers now live in `/home/z/my-project/scripts/`:
+- Reusable session helpers now live in the workspace `scripts/` folder (outside both repos):
   `vault_exec.py` (execute every python block of a note in reading order,
   `display` shimmed, Agg), `find_inbound.py` (single-pass inbound-link
   map), `issue24_verify.py` (numeric-claim re-measurement pattern),
@@ -474,35 +474,127 @@ touched (lab suite unaffected).
   getreuer_2009_contour_stencils.pdf`, `tp2_enonce_fr.pdf` Ex 6, and the
   `TAI/04_TP2_Super_Resolution` notebook.
 
+## Session 9 — COMPLETE (issues #25, #26, #27, #28, #29)
+
+**Goal:** execute the five vault 09.x/24.x sync issues left by Session 8
+(#25 Contour Stencils, #26 TP1 labs, #27 TP2 filtering, #28 morphology,
+#29 contrast), one commit + issue-close each, per the user's request to
+solve 5+ issues this session.
+
+### Completed work (vault branch `image-processing-data-science`)
+1. **#25 — Contour Stencils** (commit `4f4c2d7`): `Libraries/24` rewritten
+   around the canonical 12-stencil Getreuer pipeline (weighted/
+   length-normalized TV, G_rho smoothing, YCrCb l1 norm, 4 rule groups,
+   `(2h, 2w)` assembly with shared mid-point averaging + rim extrapolation,
+   pyramid 4x; embedded compressed reproduction verified BIT-EXACT vs
+   `TAI/utils/super_res.py` at rho=0). `Libraries/24.5` wrong claims
+   inverted ((2H-1,2W-1)->(2h,2w); 6 unsolved drills + executed key).
+   `Image Processing/09.8` rewritten as the TAI/04 lab walkthrough with
+   measured benchmarks (bicubic 31.96 dB / stencils 27.52 dB at 2x on the
+   demo set; grid-alignment caveat documented). **Quiz 09 + Quiz L04
+   corrected** (511x511 wrong answer -> 512x512; stage matching rebuilt on
+   the canonical pipeline; L04 match item q) -> (2H,2W) lattice).
+2. **#26 — 09.1/09.2 sync** (commit `49a1f96`): 09.1 = TAI/00 + TP1 Exo 1-3
+   (toolchain table, unified layout, the `a[2:3][1:3]`->(0,5) vs
+   `a[2:3,1:3]`->(1,2) trap, seuillage_fixe_perso parity 120,822 fg px);
+   09.2 = TAI/01 notebooks 01/03/04 (corrected verification discipline for
+   the six derived images, calcul_histogramme_perso bit-for-bit x4,
+   per-workload timing semantics). Quiz 09 manual_threshold ->
+   seuillage_fixe_perso.
+3. **#27 — 09.3/09.4 sync** (commit `6bba9dc`): 09.3 = noise laws (the
+   corrected 18.59 dB theoretical at var=900, measured 19.10 + clipping
+   explanation), filter parity, PSNR benchmark table (median +10.35 dB on
+   S&P, bilateral only baseline-beater on Gaussian); 09.4 = graded (a)/(b)
+   (complexity ladder, corrected 4-distinct-corners SAT formula, canonical
+   filtreMoyenne_integrale/separable embedded + sanity-checked identical,
+   ~140-180x speedups, slide-42 adaptive + impulse fallback + Lee MMSE,
+   full comparison table). Quiz 09 fast_box_filter_integral ->
+   filtreMoyenne_integrale.
+4. **#28 — 09.6 sync** (commit `21112c6`): polarity-aware Otsu (threshold
+   162, border median 153), 3x3/5x5/7x7 grid with all-12 parity Exact
+   (neutral padding + kernel reflection documented), counting ladder
+   75->22->20->19 (closing+hole-fill+opening, iterative erosion,
+   distance-peaks+watershed), Zhang-Suen conditions + cv2.ximgproc vs
+   custom (25 ms vs 61 ms, NOT bit-identical ~1687 px, border/tie order -
+   reported honestly), opencv-contrib requirement stated.
+5. **#29 — 09.7 sync** (commit `7c23d8d`): measured input ranges, canonical
+   4-parameter expansionHisto embedded, the verified colour nuance
+   (grayscale bit-for-bit 0; colour 48 levels because cv2.normalize uses
+   GLOBAL cross-channel min/max vs per-channel - manual global stretch
+   reproduces cv2 exactly), global/AHE/CLAHE verification (exact / 46.32 dB
+   / 53.79 dB), Lab-L colour preservation, L-std ladder 30.3->71.2->52.4
+   ->34.2 with the clinical CLAHE rationale.
+
+**Validation per issue:** `vault_exec.py` on every touched note (0 failures;
+every cited number reproduces live), `quiz_validator.py` ALL VALID on every
+touched quiz, `check_wikilinks.py` 164-165 notes / ~1133 links / 0 broken,
+lab suite re-run at the end (see below). All 5 issues closed with evidence
+comments via REST.
+
+**Lab-repo fix (this session):** Session 8's HANDOFF commit introduced 7
+absolute home-directory sandbox paths, breaking
+`tests/test_repo_hygiene.py::test_no_hardcoded_home_paths`. Scrubbed them
+to workspace-relative wording (see this commit); the suite is green again.
+
+### Verified findings / lessons (Session 9)
+- `cv2.normalize(NORM_MINMAX)` on colour uses the GLOBAL cross-channel
+  min/max; the assignment's per-channel expansionHisto diverges by up to 48
+  levels on the fundus image (verified: manual global stretch ==
+  cv2.normalize bit-for-bit).
+- `cv2.ximgproc.thinning(THINNING_ZHANGSUEN)` and the pure-NumPy
+  `custom_zhang_suen_thinning` are NOT bit-identical (~1687/8740 skeleton
+  px differ on imb1) — border handling and simultaneous-deletion tie
+  ordering; the notebook reports this honestly and so do the notes.
+- The TAI notebooks' markdown "Expected PSNR" table already carries the
+  corrected 18.59 dB value (var=900); measured is 19.10 dB due to [0,255]
+  clipping reducing effective MSE (documented in 09.3).
+- Quiz validator gotcha: answer text must EXACTLY repeat the option text;
+  no standalone explanation paragraphs between callout blocks; the lone `>`
+  separator between example groups must have no blank line before it.
+- vault_exec semantics that work: shared namespace across a note's python
+  blocks in reading order + chdir into the lab repo (bootstrap needs cwd
+  inside the repo); bare fences (no language) are non-executable displays —
+  use them for intentionally-buggy drill code.
+- Embedded def blocks with `-> np.ndarray` annotations need `numpy as np`
+  in scope BEFORE the def (annotations evaluate at def time).
+
+## Remaining / blocked
+- 7 issues open: #2 (awaiting TP1 handout text — placeholders committed),
+  #30 (Core Python 00.5 construction guide), #31 (01.5/02.5/03.5 upgrade),
+  #32 (10.5/23.5 upgrade), #33 (.5 sweep + phantom refs), #35 (roadmap
+  unification), **#36 NEW** (legacy `Images/...` demo paths in
+  `Libraries/15`, `16`, `18`, `21` — verified this session; fold the
+  vault-tutorials 03.2-03.5 sync gap into it or a sibling).
+- Nothing else blocked. Issues #25-#29 all closed with evidence comments.
+
 ## Next session
-**Work issue #25** (Contour Stencils: correct `Image Processing/09.8` +
-`Libraries/24` + `24.5` to the Getreuer 12-stencil `(2h, 2w)` algorithm of
-`TAI/utils/super_res.py`), then #26–#29 in order.
-Open issues now: #2, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
+**Work issue #30** (create the Core Python Handwritten Construction guide
+`Libraries/00.5...`), then #31, #32 in order; #33 after them; #35 last.
+Open issues now: #2, #30, #31, #32, #33, #35, #36.
 
 **Continuation prompt (paste as the first message):**
-> Repositories: the lab clone at `/home/z/my-project/APSD_TAI_LAB` (branch
-> `main` — the only branch, post consolidation) and the vault clone at
-> `/home/z/my-project/UMBB-Master-1` (branch `image-processing-data-science`;
-> its `main` stays empty; the vault's `TAI/` folder is now
-> `Image Processing/`). Re-embed the PAT into the vault push URL if a fresh
-> clone (`git remote set-url origin https://<PAT>@github.com/Vtheonly/
-> UMBB-Master-1.git`). Python: system interpreter (opencv-contrib-headless,
-> sklearn, seaborn, plotly, unidecode installed). Read `AGENT.md` and this
-> file first. Work the GitHub issues in order: #25 first (REST for issues,
-> token is in the lab push URL; helper `close_issue24.py` shows the urllib
-> pattern), then #26–#29. For each one: verify against the sources
-> (`TAI/docs/` PDFs, `TAI/utils/*.py`, the lab notebooks), edit through a
-> persisted script under `/home/z/my-project/scripts/` (outside both
-> repos), execute every python block you add or touch
-> (`/home/z/my-project/scripts/vault_exec.py <note.md>`), validate
-> (`python scripts/check_wikilinks.py /home/z/my-project/UMBB-Master-1`,
-> quiz validator for quiz edits, lab suite only if lab files change),
-> commit and push (vault → `image-processing-data-science`, lab → `main`),
-> close the issue with an evidence comment, then update this file.
-> #25 cautions: the canonical SR is the 12-stencil Getreuer with output
-> `(2h, 2w)` from `TAI/utils/super_res.py`; `Libraries/24`/`24.5`/`09.8`
-> teach the wrong 2-diagonal `(2H-1, 2W-1)` toy — verify every number you
-> keep by executing the real module, and keep any simplified hand example
-> only as a clearly labelled reduction. Beware: Bash output display strips
-> the sequence ESC+`[m`; verify `[m`-containing file bytes with Python.
+> Repositories: the lab clone (folder `APSD_TAI_LAB`, branch `main` — the
+> only branch) and the vault clone (folder `UMBB-Master-1`, branch
+> `image-processing-data-science`; its `main` stays empty; the vault's
+> `TAI/` folder is now `Image Processing/`). Re-embed the PAT into the
+> vault push URL if a fresh clone (`git remote set-url origin
+> https://<PAT>@github.com/Vtheonly/UMBB-Master-1.git`). Python: system
+> interpreter (opencv-contrib-python-headless installed for cv2.ximgproc).
+> Read `AGENT.md` and `HANDOFF.md` first, then `GET /repos/Vtheonly/
+> APSD_TAI_LAB/issues?state=open` (REST; token from the lab push URL; the
+> workspace `close_issue.py` helper shows the urllib comment+close
+> pattern). Work the GitHub issues in order: #30 first (Core Python 00.5
+> handwritten construction guide under `Libraries/`, per AGENT.md section 5
+> standards: problem-to-code method, clean multiline Python, unsolved paper
+> drills with executed answer keys), then #31 (01.5/02.5/03.5 upgrade) and
+> #32 (10.5/23.5). For each one: verify against the sources (course PDFs,
+> `TAI/utils/*.py`, lab notebooks), edit through a persisted script in the
+> workspace `scripts/` folder, execute every python block you add or touch
+> (`python scripts/vault_exec.py <note.md>` from the workspace), validate
+> (`python scripts/check_wikilinks.py <vault-clone>`, quiz validator for
+> quiz edits, lab suite only if lab files change), commit and push (vault
+> -> `image-processing-data-science`, lab -> `main`), close the issue with
+> an evidence comment, then update `HANDOFF.md`. Beware: Bash output
+> display strips the sequence ESC+backtick; verify such bytes with Python;
+> never write `/home/<user>/` absolute paths into committed files (repo
+> hygiene test forbids them).
