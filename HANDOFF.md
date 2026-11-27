@@ -624,42 +624,94 @@ on the remote), then solve all remaining solvable issues.
 - Wikilinks: 165 notes / 1205 links / 0 broken (after +11 new links).
 - Statement-packing detectors (both repos): 0 genuine hits.
 
+## Session 14 — COMPLETE (#2 unblocked and closed — programme fully delivered)
+
+**Goal:** routine continuation. Expected state per Session 13: only #2 open,
+blocked on the TP1 handout. The blocker resolved itself this session: the
+handout was located in the user's private `Obsidian_Notes` repo and fully
+recovered by OCR, so #2 was finished and closed — all 36 issues are now
+closed and the 9-item seed programme is fully delivered.
+
+### Completed work
+1. **Located the `TP1_Chapter_Introduction` handout.** It lives in the
+   user's private `Obsidian_Notes` repo (branch `main`) at
+   `Master 1/S1/Image Processing and Data Sceince/PDF LAB TD TP/Python
+   Data Science/TPs/TP1.pdf` (scanned print-to-PDF, 1 p.; `pdfinfo` title
+   confirms the name; no text layer). Recovered the full text with
+   `pdftoppm -r 300` + tesseract (eng). Archived as
+   `APDS/docs/TP1_Chapter_Introduction.pdf` in the lab repo (mirrors the
+   `TAI/docs/` in-repo authoritative-docs pattern).
+2. **Finished and closed #2 (commit `56019a0`).** Rewrote
+   `APDS/00_Introduction_Exercises/notebooks/01_introduction_exercises.ipynb`
+   from the handout: Exercise 1 — the five exact scenarios (customer churn,
+   product recommendation, IoT terabytes, sales dashboard, chess agent)
+   classified one-per-field (Data Science, ML, Big Data, BI, AI) with
+   Chapter 1 justifications; Exercise 2 — the handout's exact five
+   specialists, tasks (a)–(e) mapped one-to-one to roles with
+   workflow-step justifications, and the two exact critical-thinking
+   questions (DE vs MLE, DA vs DS) with model answers grounded in vault
+   01.2's role boundaries. README source-status block and concepts section
+   aligned to the real exercise structure. All `TO_CONFIRM_FROM_TP1_PDF`
+   markers are gone.
+3. **Corrected two earlier guesses the handout disproved:** (a) Exercise 1
+   asks for FIELD classification (DS / ML / AI / Big Data / BI) — not the
+   data-types / workflow-steps mapping the Phase-1 audit summary implied;
+   (b) the Exercise 2 specialists are Data Analyst, Data Scientist, Data
+   Engineer, ML Engineer, Business Analyst — not "Domain Expert / BI
+   Analyst".
+
+### Verified findings
+- **Full APDS PDF set located:** `Obsidian_Notes` repo (branch `main`),
+  `Master 1/S1/Image Processing and Data Sceince/PDF LAB TD TP/Python Data
+  Science/` — `Cours/Chapter_1..6.pdf`; `TPs/TP1.pdf, TP2.pdf, TP3_1.pdf,
+  TP3_2.pdf, TP4.pdf, TP5_Project_2.pdf, Project_1.pdf`. TAI PDFs also
+  there under `PDF LAB TD TP/TAI/`. Recorded in `AGENT.md` §2 so any future
+  session can verify APDS facts against the originals.
+- No vault changes were needed this session: vault 01.2 already taught the
+  handout's exact five roles and field matrix (verified before editing).
+
+### Validation (this session)
+- `pytest -q` 188 passed / 0 failed; `pip check` clean.
+- `scripts/execute_notebooks.py`: 25/25 notebooks, 0 cell errors (TP1
+  notebook 13 cells / 0 errors); outputs stripped via
+  `scripts/clean_notebooks.py` before commit (repo hygiene rule 9).
+- `scripts/verify_repo.py` PASS; vault wikilinks 165 notes / 1205 links /
+  0 broken.
+
 ## Remaining / blocked
-- **1 issue open: #2** — blocked on user input: the five exact TP1 scenario
-  domain names (or the `TP1_Chapter_Introduction` PDF itself). Everything
-  else in #2 is implemented, executed, and pushed.
-- Nothing else open. All 35 other issues closed with evidence comments.
+- Nothing. **All 36 issues are closed (36/36)** — the 9-item seed programme
+  is fully delivered: every verified gap, bug, sync mismatch and missing
+  lab from the Phase-1 audit is implemented, validated and pushed.
 
 ## Next session
-Only #2 remains, and it is blocked on the user. If the user supplies the
-TP1 handout (PDF or the five domain names): replace the
-`TO_CONFIRM_FROM_TP1_PDF` placeholders in
-`APDS/00_Introduction_Exercises/notebooks/01_introduction_exercises.ipynb`,
-update its README source-status block, re-execute the notebook, run
-`pytest -q`, commit+push to `main`, close #2 with evidence. Otherwise there
-is no pending curriculum work: the 9-item seed programme is fully delivered
-(36 issues opened, 35 closed, 1 blocked on external input).
+No pending curriculum work. Any future session is maintenance only:
+re-run the validation gate (`pip check`, `pytest -q`,
+`MPLBACKEND=Agg python scripts/execute_notebooks.py`,
+`python scripts/verify_repo.py`,
+`python scripts/check_wikilinks.py <vault-clone>`), fix anything the user
+reports, and consult `APDS/docs/` + `TAI/docs/` (or the `Obsidian_Notes`
+archive, see AGENT.md §2) before any content change.
 
 **Continuation prompt (paste as the first message):**
 > Repositories: the lab clone (folder `APSD_TAI_LAB`, branch `main` — the
 > only branch) and the vault clone (folder `UMBB-Master-1`, branch
 > `image-processing-data-science`; its `main` stays empty; the vault's
-> `TAI/` folder is now `Image Processing/`). Re-embed the PAT into the
-> vault push URL if a fresh clone (`git remote set-url origin
-> https://<PAT>@github.com/Vtheonly/UMBB-Master-1.git`). Python: system
-> interpreter (opencv-contrib-python-headless installed for cv2.ximgproc).
-> Read `AGENT.md` and `HANDOFF.md` first, then `GET /repos/Vtheonly/
-> APSD_TAI_LAB/issues?state=open` (REST; token from the lab push URL; the
-> workspace `issue.py` helper wraps the urllib pattern). Expected state:
-> only issue #2 open, blocked awaiting the user's TP1 handout (five
-> scenario domain names). If the user provided them, finish #2 per the
-> Next-session notes in HANDOFF.md; otherwise report status and stop. For
-> any edit: verify against the sources first, edit through a persisted
-> script in the workspace `scripts/` folder, execute every python block
-> you add or touch (`python scripts/vault_exec.py <note.md>`), validate
+> `TAI/` folder is now `Image Processing/`). Re-embed the PAT into both
+> push URLs if using fresh clones. Python: system interpreter
+> (opencv-contrib-python-headless installed for cv2.ximgproc). Read
+> `AGENT.md` and `HANDOFF.md` first, then `GET /repos/Vtheonly/APSD_TAI_LAB/
+> issues?state=open` (REST; token from the lab push URL). Expected state:
+> ZERO open issues — the programme is fully delivered (36/36 closed;
+> Session 14 finished the last one, #2, by recovering the TP1 handout from
+> the user's `Obsidian_Notes` archive; it is archived at
+> `APDS/docs/TP1_Chapter_Introduction.pdf`). Do not invent new work: only
+> act on what the user explicitly reports. For any edit: verify against the
+> sources first (APDS PDFs: `Obsidian_Notes` repo path in AGENT.md §2; TAI
+> PDFs: `TAI/docs/`), edit through a persisted script in the workspace
+> `scripts/` folder, execute every python block you add or touch, validate
 > (`python scripts/check_wikilinks.py <vault-clone>`, `pytest -q` for lab
-> files), commit and push incrementally, close issues with evidence
-> comments, then update `HANDOFF.md`. Beware: Bash output display strips
+> files), commit and push incrementally, close/comment issues with
+> evidence, then update `HANDOFF.md`. Beware: Bash output display strips
 > the sequence ESC+backtick; verify such bytes with Python; never write
 > `/home/<user>/` absolute paths into committed files (repo hygiene test
 > forbids them).

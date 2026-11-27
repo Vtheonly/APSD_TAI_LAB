@@ -42,6 +42,14 @@ Essential Python Libraries parts 1–2, Data Cleaning & Preprocessing, EDA) and
 TP1–TP5 (incl. Tutorial 03 v2 "Exercise 6 — one million products", Tutorial 04
 Exercises 01–04 + Project, Tutorial 05).
 
+The APDS PDFs are not distributed in this repo (only the TP1 handout is
+archived, at `APDS/docs/TP1_Chapter_Introduction.pdf`); the full set lives
+in the user's private `Obsidian_Notes` repo (branch `main`) under
+`Master 1/S1/Image Processing and Data Sceince/PDF LAB TD TP/Python Data
+Science/` (`Cours/Chapter_1..6.pdf`, `TPs/TP1..TP5 + Project_1.pdf`;
+TAI PDFs also there under `PDF LAB TD TP/TAI/`). Fetch with the PAT when a
+session must verify an APDS fact against the originals.
+
 **TAI track (in-repo `TAI/docs/`):**
 - `assignments/tp1_enonce_fr.pdf`, `assignments/tp1_assignment_en.pdf`,
   `assignments/tp2_enonce_fr.pdf`
