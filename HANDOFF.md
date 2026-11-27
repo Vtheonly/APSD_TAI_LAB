@@ -455,122 +455,87 @@ touched (lab suite unaffected).
   `close_issue24.py` (REST comment+close via `urllib` — avoids curl quoting
   issues).
 
-## Remaining / blocked
-- 11 issues open: #2 (awaiting TP1 handout text — placeholders committed),
-  #25 (Contour Stencils 12-stencil fix — NEXT), #26–#29 (vault 09.x sync
-  with TAI labs), #30–#32 (.5 exam-prep), #33 (.5 sweep + phantom refs),
-  #35 (roadmap unification). Nothing else blocked.
-- Tracker gap (carried from Session 6, still unopened): no issue covers
-  syncing vault tutorials `03.2`–`03.5` with the updated APDS/05–07
-  notebooks (column names, `>= 15` vs `> 15`). Fold into a future session or
-  open a new issue.
-- #25 cautions (verified in Session 1, do not re-litigate): the canonical
-  SR is `TAI/utils/super_res.py` — full Getreuer 2009, **12 oriented
-  stencils, output `(2h, 2w)`**; vault `09.8` / `Libraries/24` / `24.5`
-  teach a 2-diagonal `(2H-1, 2W-1)` toy and even assert "never `(2H, 2W)`" —
-  wrong for the lab. Correct to the 12-stencil form; a simplified hand
-  example may survive ONLY as a clearly labelled pedagogical reduction.
-  Sources: `TAI/utils/super_res.py`, `TAI/docs/references/
-  getreuer_2009_contour_stencils.pdf`, `tp2_enonce_fr.pdf` Ex 6, and the
-  `TAI/04_TP2_Super_Resolution` notebook.
+## Sessions 10-12 (unlogged; reconstructed from git history + issue closures)
+Issues #30, #31, #32 and #33 parts 1-3 were completed and pushed in sessions
+that ran out of context before logging here. Evidence trail: vault commits
+`faa5a93` (00.5 construction guide, #30), `538762b` (01.5/02.5 upgrade +
+03.5 phantom-ref fix, #31), `888c045` (23.5 Sklearn surface upgrade, #32),
+`647179c`/`9f3939a`/`6978546` (#33 parts 1-3: semicolon + phantom-ref sweep,
+13 companion drills, 13.5/14.5/25.5/26.5 drills). All four issues closed
+with evidence comments. The 09.5/11.5/12.5 drill batch was left uncommitted
+in the vault working tree (completed in Session 13 below).
 
-## Session 9 — COMPLETE (issues #25, #26, #27, #28, #29)
+## Session 13 — COMPLETE (branch unification + #33 final batch, #36, #35)
 
-**Goal:** execute the five vault 09.x/24.x sync issues left by Session 8
-(#25 Contour Stencils, #26 TP1 labs, #27 TP2 filtering, #28 morphology,
-#29 contrast), one commit + issue-close each, per the user's request to
-solve 5+ issues this session.
+**Goal:** user directive — the local clones are the canonical state; force
+push the lab branch and unify it on GitHub (a stray `master` had reappeared
+on the remote), then solve all remaining solvable issues.
 
-### Completed work (vault branch `image-processing-data-science`)
-1. **#25 — Contour Stencils** (commit `4f4c2d7`): `Libraries/24` rewritten
-   around the canonical 12-stencil Getreuer pipeline (weighted/
-   length-normalized TV, G_rho smoothing, YCrCb l1 norm, 4 rule groups,
-   `(2h, 2w)` assembly with shared mid-point averaging + rim extrapolation,
-   pyramid 4x; embedded compressed reproduction verified BIT-EXACT vs
-   `TAI/utils/super_res.py` at rho=0). `Libraries/24.5` wrong claims
-   inverted ((2H-1,2W-1)->(2h,2w); 6 unsolved drills + executed key).
-   `Image Processing/09.8` rewritten as the TAI/04 lab walkthrough with
-   measured benchmarks (bicubic 31.96 dB / stencils 27.52 dB at 2x on the
-   demo set; grid-alignment caveat documented). **Quiz 09 + Quiz L04
-   corrected** (511x511 wrong answer -> 512x512; stage matching rebuilt on
-   the canonical pipeline; L04 match item q) -> (2H,2W) lattice).
-2. **#26 — 09.1/09.2 sync** (commit `49a1f96`): 09.1 = TAI/00 + TP1 Exo 1-3
-   (toolchain table, unified layout, the `a[2:3][1:3]`->(0,5) vs
-   `a[2:3,1:3]`->(1,2) trap, seuillage_fixe_perso parity 120,822 fg px);
-   09.2 = TAI/01 notebooks 01/03/04 (corrected verification discipline for
-   the six derived images, calcul_histogramme_perso bit-for-bit x4,
-   per-workload timing semantics). Quiz 09 manual_threshold ->
-   seuillage_fixe_perso.
-3. **#27 — 09.3/09.4 sync** (commit `6bba9dc`): 09.3 = noise laws (the
-   corrected 18.59 dB theoretical at var=900, measured 19.10 + clipping
-   explanation), filter parity, PSNR benchmark table (median +10.35 dB on
-   S&P, bilateral only baseline-beater on Gaussian); 09.4 = graded (a)/(b)
-   (complexity ladder, corrected 4-distinct-corners SAT formula, canonical
-   filtreMoyenne_integrale/separable embedded + sanity-checked identical,
-   ~140-180x speedups, slide-42 adaptive + impulse fallback + Lee MMSE,
-   full comparison table). Quiz 09 fast_box_filter_integral ->
-   filtreMoyenne_integrale.
-4. **#28 — 09.6 sync** (commit `21112c6`): polarity-aware Otsu (threshold
-   162, border median 153), 3x3/5x5/7x7 grid with all-12 parity Exact
-   (neutral padding + kernel reflection documented), counting ladder
-   75->22->20->19 (closing+hole-fill+opening, iterative erosion,
-   distance-peaks+watershed), Zhang-Suen conditions + cv2.ximgproc vs
-   custom (25 ms vs 61 ms, NOT bit-identical ~1687 px, border/tie order -
-   reported honestly), opencv-contrib requirement stated.
-5. **#29 — 09.7 sync** (commit `7c23d8d`): measured input ranges, canonical
-   4-parameter expansionHisto embedded, the verified colour nuance
-   (grayscale bit-for-bit 0; colour 48 levels because cv2.normalize uses
-   GLOBAL cross-channel min/max vs per-channel - manual global stretch
-   reproduces cv2 exactly), global/AHE/CLAHE verification (exact / 46.32 dB
-   / 53.79 dB), Lab-L colour preservation, L-std ladder 30.3->71.2->52.4
-   ->34.2 with the clinical CLAHE rationale.
+### Completed work
+1. **Branch unification (user directive).** The remote had a stray `master`
+   branch pointing at the same commit as `main` (accidental re-creation;
+   AGENT.md mandates a single `main`). Force-pushed `main` (already
+   identical), deleted `master` on the remote, verified `origin/HEAD ->
+   origin/main` and a single `refs/heads/main` via `git ls-remote`.
+2. **Issue #33 final batch (closed).** Committed the pending 09.5/11.5/12.5
+   drill batch (vault `683f4f3`; vault_exec 7/7, 7/7, 6/6 OK; drill numerics
+   re-verified). Eliminated the last genuine semicolon statement-packing in
+   BOTH repos: lab notebook `TAI/04/.../01_super_resolution_contour_stencils.ipynb`
+   (4 packed append lines -> 8 clean; re-executed 12 cells / 0 errors; lab
+   commit `05ae69b`) + vault mirror 09.8, Libraries/26 dyP/dxP, DS/04.2,
+   DS/04.4 (vault `683f4f3`). Remaining `;` grep hits are prose in
+   docstrings/strings only.
+3. **Issue #36 (closed).** Libraries 15/16/18/21 legacy `Images/` demo paths
+   -> `TAI.utils.env_io.load_image` with unified names + `OUT_DIR` outputs
+   (legacy-name mapping comments kept); fixed pre-existing latent bug in
+   Libraries/21 block 2 (`binary_mask` never instantiated). Tutorials
+   synced with the labs: 03.2 verified already in sync; 03.3 gained the
+   >= 15 vs > 15 boundary cell + Matplotlib 3.9 tick_labels fallback;
+   03.4 moved to handout thresholds (60_000 / 8 / 5) + data-scaled
+   sensitivity (q75=1755, 2 stays, Poor 3/Average 2/Good 3 — matches lab
+   06/02 exactly) + index-free hospital_original.csv; 03.5 fixed a REAL
+   execution failure (bare `from utils import ...` broke outside APDS/07;
+   now try/except + inline), renamed MoM_Growth/Max_Product/Min_Product,
+   added Total_Volume to the quarterly pivot, seaborn >= 0.13 boxplot fix
+   (vault `4dc3229`).
+4. **Issue #35 (closed).** Master roadmap section 3 rewritten from the
+   5-phase structure to the SIX progressive stages (per-stage APDS/TAI
+   labs + vault chapters + library notes mapping; both required cross-track
+   bridges: Stage 3 arrays<->images, Stage 4 cleaning <-> Stage 6
+   radiometry). Libraries/00 rewritten as a stage-indexed API lookup (no
+   learning-order claims; filename kept so 9 wikilinks resolve). All 7
+   chapter/track overviews (DS 01.0-05.0, IP overview, IP MOC) carry Stage
+   Placement sections (vault `532ea08`).
+5. **Issue #2 verified still blocked.** The implemented notebook (13 cells)
+   executes 0-error; the ONLY missing piece is the five exact scenario
+   domain names, which exist solely in the user's `TP1_Chapter_Introduction`
+   handout PDF (not distributed in the repo; the Phase-1 audit summary does
+   not name them). Needs the user to supply the PDF or the five domains.
 
-**Validation per issue:** `vault_exec.py` on every touched note (0 failures;
-every cited number reproduces live), `quiz_validator.py` ALL VALID on every
-touched quiz, `check_wikilinks.py` 164-165 notes / ~1133 links / 0 broken,
-lab suite re-run at the end (see below). All 5 issues closed with evidence
-comments via REST.
-
-**Lab-repo fix (this session):** Session 8's HANDOFF commit introduced 7
-absolute home-directory sandbox paths, breaking
-`tests/test_repo_hygiene.py::test_no_hardcoded_home_paths`. Scrubbed them
-to workspace-relative wording (see this commit); the suite is green again.
-
-### Verified findings / lessons (Session 9)
-- `cv2.normalize(NORM_MINMAX)` on colour uses the GLOBAL cross-channel
-  min/max; the assignment's per-channel expansionHisto diverges by up to 48
-  levels on the fundus image (verified: manual global stretch ==
-  cv2.normalize bit-for-bit).
-- `cv2.ximgproc.thinning(THINNING_ZHANGSUEN)` and the pure-NumPy
-  `custom_zhang_suen_thinning` are NOT bit-identical (~1687/8740 skeleton
-  px differ on imb1) — border handling and simultaneous-deletion tie
-  ordering; the notebook reports this honestly and so do the notes.
-- The TAI notebooks' markdown "Expected PSNR" table already carries the
-  corrected 18.59 dB value (var=900); measured is 19.10 dB due to [0,255]
-  clipping reducing effective MSE (documented in 09.3).
-- Quiz validator gotcha: answer text must EXACTLY repeat the option text;
-  no standalone explanation paragraphs between callout blocks; the lone `>`
-  separator between example groups must have no blank line before it.
-- vault_exec semantics that work: shared namespace across a note's python
-  blocks in reading order + chdir into the lab repo (bootstrap needs cwd
-  inside the repo); bare fences (no language) are non-executable displays —
-  use them for intentionally-buggy drill code.
-- Embedded def blocks with `-> np.ndarray` annotations need `numpy as np`
-  in scope BEFORE the def (annotations evaluate at def time).
+### Validation (this session)
+- `pytest -q` 188 passed / 0 failed; `pip check` clean.
+- Touched lab notebook re-executed headlessly: 0 cell errors.
+- Every touched vault note executed via `scripts/vault_exec.py`: 0 failures
+  (15: 4/4, 16: 1/1, 18: 1/1, 21: 2/2, 09.5: 7/7, 11.5: 7/7, 12.5: 6/6,
+  09.8: 4/4, L26: 6/6, 04.2: 5/5, 04.4: 3/3, 03.3: 1/1, 03.4: 2/2, 03.5: 2/2).
+- Wikilinks: 165 notes / 1205 links / 0 broken (after +11 new links).
+- Statement-packing detectors (both repos): 0 genuine hits.
 
 ## Remaining / blocked
-- 7 issues open: #2 (awaiting TP1 handout text — placeholders committed),
-  #30 (Core Python 00.5 construction guide), #31 (01.5/02.5/03.5 upgrade),
-  #32 (10.5/23.5 upgrade), #33 (.5 sweep + phantom refs), #35 (roadmap
-  unification), **#36 NEW** (legacy `Images/...` demo paths in
-  `Libraries/15`, `16`, `18`, `21` — verified this session; fold the
-  vault-tutorials 03.2-03.5 sync gap into it or a sibling).
-- Nothing else blocked. Issues #25-#29 all closed with evidence comments.
+- **1 issue open: #2** — blocked on user input: the five exact TP1 scenario
+  domain names (or the `TP1_Chapter_Introduction` PDF itself). Everything
+  else in #2 is implemented, executed, and pushed.
+- Nothing else open. All 35 other issues closed with evidence comments.
 
 ## Next session
-**Work issue #30** (create the Core Python Handwritten Construction guide
-`Libraries/00.5...`), then #31, #32 in order; #33 after them; #35 last.
-Open issues now: #2, #30, #31, #32, #33, #35, #36.
+Only #2 remains, and it is blocked on the user. If the user supplies the
+TP1 handout (PDF or the five domain names): replace the
+`TO_CONFIRM_FROM_TP1_PDF` placeholders in
+`APDS/00_Introduction_Exercises/notebooks/01_introduction_exercises.ipynb`,
+update its README source-status block, re-execute the notebook, run
+`pytest -q`, commit+push to `main`, close #2 with evidence. Otherwise there
+is no pending curriculum work: the 9-item seed programme is fully delivered
+(36 issues opened, 35 closed, 1 blocked on external input).
 
 **Continuation prompt (paste as the first message):**
 > Repositories: the lab clone (folder `APSD_TAI_LAB`, branch `main` — the
@@ -582,19 +547,16 @@ Open issues now: #2, #30, #31, #32, #33, #35, #36.
 > interpreter (opencv-contrib-python-headless installed for cv2.ximgproc).
 > Read `AGENT.md` and `HANDOFF.md` first, then `GET /repos/Vtheonly/
 > APSD_TAI_LAB/issues?state=open` (REST; token from the lab push URL; the
-> workspace `close_issue.py` helper shows the urllib comment+close
-> pattern). Work the GitHub issues in order: #30 first (Core Python 00.5
-> handwritten construction guide under `Libraries/`, per AGENT.md section 5
-> standards: problem-to-code method, clean multiline Python, unsolved paper
-> drills with executed answer keys), then #31 (01.5/02.5/03.5 upgrade) and
-> #32 (10.5/23.5). For each one: verify against the sources (course PDFs,
-> `TAI/utils/*.py`, lab notebooks), edit through a persisted script in the
-> workspace `scripts/` folder, execute every python block you add or touch
-> (`python scripts/vault_exec.py <note.md>` from the workspace), validate
-> (`python scripts/check_wikilinks.py <vault-clone>`, quiz validator for
-> quiz edits, lab suite only if lab files change), commit and push (vault
-> -> `image-processing-data-science`, lab -> `main`), close the issue with
-> an evidence comment, then update `HANDOFF.md`. Beware: Bash output
-> display strips the sequence ESC+backtick; verify such bytes with Python;
-> never write `/home/<user>/` absolute paths into committed files (repo
-> hygiene test forbids them).
+> workspace `issue.py` helper wraps the urllib pattern). Expected state:
+> only issue #2 open, blocked awaiting the user's TP1 handout (five
+> scenario domain names). If the user provided them, finish #2 per the
+> Next-session notes in HANDOFF.md; otherwise report status and stop. For
+> any edit: verify against the sources first, edit through a persisted
+> script in the workspace `scripts/` folder, execute every python block
+> you add or touch (`python scripts/vault_exec.py <note.md>`), validate
+> (`python scripts/check_wikilinks.py <vault-clone>`, `pytest -q` for lab
+> files), commit and push incrementally, close issues with evidence
+> comments, then update `HANDOFF.md`. Beware: Bash output display strips
+> the sequence ESC+backtick; verify such bytes with Python; never write
+> `/home/<user>/` absolute paths into committed files (repo hygiene test
+> forbids them).
