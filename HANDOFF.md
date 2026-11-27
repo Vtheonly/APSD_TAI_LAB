@@ -369,44 +369,140 @@ exact accuracies 0.8212/0.8045); quiz validator 30/30 ALL VALID; wikilinks
   order, `display` shimmed), `close_issueN.py` pattern (REST comment+close;
   token in `repos/.token`), `verify_nagao_23*.py`, `issue2*_gen*.py`.
 
+
+## Session 8 — issue #24 (Bilateral: one canonical treatment aligned with the real `filtrebilateral`)
+
+**Context:** continuation session; both repos cloned fresh (lab `main`,
+vault `image-processing-data-science`), PAT re-embedded in the vault push
+URL (`git remote set-url`). `gh` still absent — REST via `urllib` helper
+scripts under `/home/z/my-project/scripts/`. Open issues at start: #2, #24,
+#25–#29, #30–#33, #35.
+
+**Completed work** (vault commit `c0ffcde`; issue #24 closed with evidence
+comment):
+
+1. **`Libraries/25` rebuilt as the single canonical Bilateral treatment**,
+   aligned with the REAL `TAI/utils/filters.py:filtrebilateral` (per the
+   Session-7 caution: no range LUT — per-shift vectorized
+   shift-accumulation):
+   - §6.1 embeds `_validate_odd` + `filtrebilateral` **byte-identical**
+     (automated diff vs the module source: exact match) + pattern
+     explanation (offsets-not-pixels loops, scalar `math.exp` spatial,
+     vectorized `np.exp` range, reflect padding = `BORDER_REFLECT_101`,
+     square window, `1e-12` guard) + measured timings (canonical 1.3 ms vs
+     naive 17.0 ms on 48×48; 26 ms on 256×256).
+   - §6.2 `bilateral_naive` repositioned as the pedagogical per-pixel
+     translation (the `filtreMoyenne_naif_boucles` role); verified max-0
+     difference vs the canonical form.
+   - §6.3 range-LUT demoted to *optional optimization*, source-verified
+     against OpenCV 4.x (`bilateral_filter.dispatch.cpp`:
+     `color_weight[i] = (float)std::exp(i*i*gauss_color_coeff)`; consumed
+     as `color_weight[std::abs(val - val0)]` in `bilateral_filter.simd.hpp`);
+     verified LUT values 0.8825 / 0.3247 / 0.0111 (σ_r=40).
+   - **New §7.1 — OpenCV's disk-shaped spatial window** (source-verified
+     `if (r > radius) continue;`): d=7 disk keeps 29/49 offsets; square
+     (canonical) vs cv2 = max 14 levels at d=7 (mean 1.74) and max 6 at d=9
+     (mean 0.76, seed 24); **adopting the disk rule reproduces cv2
+     bit-exactly** (max 0, mean 0.0000 at d=7/9/11, borders included).
+     TP2 course preset `d=7, sigmaColor=40, sigmaSpace=40` added (instructor-
+     prescribed, `tp2_enonce_fr.pdf` Ex. 2 d).
+   - §9 rebuilt as a 3-row verified agreement table + TP2 lab reproduction
+     on the seeded lab inputs (cameraman + var-100 seed-42): cv2 preset
+     (7,40,40) vs `filtrebilateral(7, 2.0, 40.0)` → **PSNR 47.05 dB**
+     ("similar behaviour" — deliberately cross-parameter); 30.03 vs 30.29 dB
+     against the clean reference over the 28.13 dB noisy baseline.
+2. **`Libraries/20` §3 reduced to positioning + canonical links** (mirrors
+   the #23 Nagao pattern); duplicated formula block + symbol list removed.
+3. **`Libraries/25.5`** — canonical signature row
+   (`filtrebilateral(img, k, sigma_s, sigma_r)`); LUT relabeled optional in
+   the syntax matrix, §3.3 and the checklist (removed the old "exam expects
+   the table lookup form" contradiction); §4 Motor-Recall rewritten to the
+   canonical per-shift template — line-for-line the module body
+   (programmatically verified) — + TP2 preset one-liner.
+4. **`Libraries/20.5`** — one canonical from-scratch signature row added.
+5. **`Image Processing/02.7`** — deep-dive pointer updated only (canonical
+   implementation, disk-window semantics); stays the compact concept note.
+
+**Validation:** byte-identical embed check OK; all 6 python blocks of
+`Libraries/25` execute in reading order **0 errors** (legacy §7 API demo and
+§8 color demo made runnable in the process); `Libraries/20` block OK;
+wikilinks **164 notes / 1122 links / 0 broken**; no lab-repo or quiz files
+touched (lab suite unaffected).
+
+**New verified facts / lessons (Session 8)**
+- **`cv2.bilateralFilter` uses a DISK, not the square window** (source:
+  `bilateral_filter.dispatch.cpp` skips offsets with `r > radius`; at d=7
+  the disk keeps 29 of 49 offsets). Square-vs-disk deviates max 14 levels
+  at d=7; a disk-rule manual implementation reproduces cv2 exactly. This
+  supersedes the old §9 explanation ("LUT rounding and border handling").
+- OpenCV 4.x 8U bilateral precomputes the 256-entry color-weight LUT
+  (source-verified in `bilateral_filter.dispatch.cpp` / `.simd.hpp`).
+- `np.pad(mode="reflect")` == `BORDER_REFLECT_101` confirmed bit-exactly on
+  border pixels (full-image max 0 including borders at d=7/9/11).
+- **Toolchain quirks for future sessions:** (a) the Bash tool's DISPLAY
+  strips the two characters ESC + `[m` — text like `space_weight[maxk]`
+  renders as `space_weightaxk]`; files on disk are unaffected — verify
+  bytes with Python (`chr(91)`) when a `[m` sequence matters; (b) Write/Edit
+  can mangle a `)` directly before a closing quote in rare code-heavy
+  payloads — always re-read files after writing; (c) multi-pattern `rg`
+  sweeps over the vault can hit the 2-minute timeout — use single-pass
+  Python scanners instead.
+- Reusable session helpers now live in `/home/z/my-project/scripts/`:
+  `vault_exec.py` (execute every python block of a note in reading order,
+  `display` shimmed, Agg), `find_inbound.py` (single-pass inbound-link
+  map), `issue24_verify.py` (numeric-claim re-measurement pattern),
+  `issue24_byte_identical.py`, `issue24_template_check.py`,
+  `close_issue24.py` (REST comment+close via `urllib` — avoids curl quoting
+  issues).
+
 ## Remaining / blocked
-- 12 issues open: #2 (awaiting TP1 handout text — placeholders committed),
-  #24 (Bilateral merge — NEXT), #25 (Contour Stencils 12-stencil fix),
-  #26–#29 (vault 09.x sync with TAI labs), #30–#32 (.5 exam-prep),
-  #33 (.5 sweep + phantom refs), #35 (roadmap unification). Nothing else
-  blocked.
+- 11 issues open: #2 (awaiting TP1 handout text — placeholders committed),
+  #25 (Contour Stencils 12-stencil fix — NEXT), #26–#29 (vault 09.x sync
+  with TAI labs), #30–#32 (.5 exam-prep), #33 (.5 sweep + phantom refs),
+  #35 (roadmap unification). Nothing else blocked.
 - Tracker gap (carried from Session 6, still unopened): no issue covers
   syncing vault tutorials `03.2`–`03.5` with the updated APDS/05–07
   notebooks (column names, `>= 15` vs `> 15`). Fold into a future session or
   open a new issue.
-- #24 note: the issue text says "align with `filtrebilateral` (range LUT
-  optimization)" but the ACTUAL `TAI/utils/filters.py:filtrebilateral` uses
-  per-shift vectorized `math.exp` (no LUT) — align to the real code, and
-  reconcile with whatever `Libraries/25` teaches about LUTs (keep the LUT as
-  an optimization discussion if it is presented as such, clearly secondary
-  to the canonical form).
+- #25 cautions (verified in Session 1, do not re-litigate): the canonical
+  SR is `TAI/utils/super_res.py` — full Getreuer 2009, **12 oriented
+  stencils, output `(2h, 2w)`**; vault `09.8` / `Libraries/24` / `24.5`
+  teach a 2-diagonal `(2H-1, 2W-1)` toy and even assert "never `(2H, 2W)`" —
+  wrong for the lab. Correct to the 12-stencil form; a simplified hand
+  example may survive ONLY as a clearly labelled pedagogical reduction.
+  Sources: `TAI/utils/super_res.py`, `TAI/docs/references/
+  getreuer_2009_contour_stencils.pdf`, `tp2_enonce_fr.pdf` Ex 6, and the
+  `TAI/04_TP2_Super_Resolution` notebook.
 
 ## Next session
-**Work issue #24** (Bilateral: merge 02.7 + Libraries/20 + 25 + .5 into one
-canonical treatment, aligned with the real `filtrebilateral`), then #25
-(Contour Stencils 12-stencil correction), then #26–#29 in order.
-Open issues now: #2, #24, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
+**Work issue #25** (Contour Stencils: correct `Image Processing/09.8` +
+`Libraries/24` + `24.5` to the Getreuer 12-stencil `(2h, 2w)` algorithm of
+`TAI/utils/super_res.py`), then #26–#29 in order.
+Open issues now: #2, #25, #26, #27, #28, #29, #30, #31, #32, #33, #35.
 
 **Continuation prompt (paste as the first message):**
-> Repositories: the lab clone (branch `main` — the only branch, post
-> consolidation) and the vault clone at `../umbb_master1` (branch
-> `image-processing-data-science`; its `main` stays empty; the vault's
-> `TAI/` folder is now `Image Processing/`). Python: system interpreter
-> (opencv-contrib-headless, sklearn, seaborn, plotly, unidecode installed).
-> Read `AGENT.md` and this file first. Work the GitHub issues #24, #25, ...
-> in order (REST for issues; token in `repos/.token`, rebuild from the push
-> URL if missing); for each one: verify against the sources (`TAI/docs/`
-> PDFs, `TAI/utils/*.py`, the lab notebooks), edit through a persisted
-> script under the session scripts folder (outside both repos), execute every
-> python block you add or touch (`vault_exec.py`), validate
-> (`python scripts/check_wikilinks.py ../umbb_master1`, quiz validator for
-> quiz edits, lab suite only if lab files change), commit and push (vault →
-> `image-processing-data-science`, lab → `main`), close the issue with an
-> evidence comment, then update this file. #24 caution: the real
-> `filtrebilateral` has NO range LUT — align to the code, not the issue's
-> parenthetical.
+> Repositories: the lab clone at `/home/z/my-project/APSD_TAI_LAB` (branch
+> `main` — the only branch, post consolidation) and the vault clone at
+> `/home/z/my-project/UMBB-Master-1` (branch `image-processing-data-science`;
+> its `main` stays empty; the vault's `TAI/` folder is now
+> `Image Processing/`). Re-embed the PAT into the vault push URL if a fresh
+> clone (`git remote set-url origin https://<PAT>@github.com/Vtheonly/
+> UMBB-Master-1.git`). Python: system interpreter (opencv-contrib-headless,
+> sklearn, seaborn, plotly, unidecode installed). Read `AGENT.md` and this
+> file first. Work the GitHub issues in order: #25 first (REST for issues,
+> token is in the lab push URL; helper `close_issue24.py` shows the urllib
+> pattern), then #26–#29. For each one: verify against the sources
+> (`TAI/docs/` PDFs, `TAI/utils/*.py`, the lab notebooks), edit through a
+> persisted script under `/home/z/my-project/scripts/` (outside both
+> repos), execute every python block you add or touch
+> (`/home/z/my-project/scripts/vault_exec.py <note.md>`), validate
+> (`python scripts/check_wikilinks.py /home/z/my-project/UMBB-Master-1`,
+> quiz validator for quiz edits, lab suite only if lab files change),
+> commit and push (vault → `image-processing-data-science`, lab → `main`),
+> close the issue with an evidence comment, then update this file.
+> #25 cautions: the canonical SR is the 12-stencil Getreuer with output
+> `(2h, 2w)` from `TAI/utils/super_res.py`; `Libraries/24`/`24.5`/`09.8`
+> teach the wrong 2-diagonal `(2H-1, 2W-1)` toy — verify every number you
+> keep by executing the real module, and keep any simplified hand example
+> only as a clearly labelled reduction. Beware: Bash output display strips
+> the sequence ESC+`[m`; verify `[m`-containing file bytes with Python.
